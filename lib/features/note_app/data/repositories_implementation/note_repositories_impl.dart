@@ -23,9 +23,7 @@ class NoteRepositoriesImpl implements NoteRepositories {
   //read
   @override
   List<NoteModel> getNotes() {
-    // TODO: implement getNotes
-
-    //raw data fetch - map -store in var- return
+    //raw data fetch - map,conv -store in var- return
 
     List<dynamic> rawData = _localDataSource.getNotesFromStorage();
     List<NoteModel> listOfNoteModel = rawData
