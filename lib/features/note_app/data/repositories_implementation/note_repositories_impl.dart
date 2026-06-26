@@ -11,9 +11,9 @@
 
 import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repositories.dart';
+import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
-class NoteRepositoriesImpl implements NoteRepositories {
+class NoteRepositoriesImpl implements NoteRepository {
   //fin _fields,construct,@ov meth
   final NoteLocalDataSource _localDataSource;
 
