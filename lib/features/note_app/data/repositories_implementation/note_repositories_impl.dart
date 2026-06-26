@@ -5,7 +5,7 @@
 //1.  Single Responsibility
 //    (why not ctr-->Data source? ctrl only UI update.not second responsibitlity o translating data or multiple Data source manage)
 
-//2. future proof swap game:if firebase integration.
+//2. future proof swap :if firebase integration.
 //   without repo, direct LDS conn ,each code change from LDS to FB in UI
 //   with repo ,Ctr only talk to boss(reop).
 
