@@ -1,0 +1,3 @@
+what? single file --> one single action "user can take". 
+why ? (SRP: not all in ctr,uc )
+how? seperate classes <--- repo
