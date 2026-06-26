@@ -13,6 +13,8 @@ class AddNoteUsecase {
 
     currentList.insert(0, noteModel);
 
+//(- of GetStor) Fetch list , do action , and save entire list Every time
+//unlike SQL :modify that specific data directly in DB.
     await _noteRepository.saveNotes(currentList);
   }
 }
