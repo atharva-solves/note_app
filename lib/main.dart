@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:note_app/core/services/local_storage_service.dart';
 
-void main() {
+void main() async {
+
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  //start GetStor engine in phones hardware 
+  GetStorage.init();
+
+  //since Core, put Instance before app Created .
+  Get.put(StorageService());
+
   runApp(const MyApp());
 }
 
