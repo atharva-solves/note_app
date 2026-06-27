@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/note_app/presentation/bindings/note_binding.dart';
+import 'package:note_app/features/note_app/presentation/views/notes_view.dart';
 
 abstract class AppPages {
   //priv constr
@@ -12,7 +13,8 @@ abstract class AppPages {
   static final List<GetPage> pages = [
     GetPage(
       name: initial,
-      page: () => const NoteView(), //will build in step 5E
+      //const bcz view doesn req var in construct.its const and known before app runs.
+      page: () => const NotesView(), 
       binding: NoteBinding(),
     ),
   ];
