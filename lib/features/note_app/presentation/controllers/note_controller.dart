@@ -39,16 +39,15 @@ class NoteController extends GetxController {
   //with delay for 100% gaurantee for old devices
 
   //comment out for mocking
-  /*  @override
+  @override
   void onReady() {
     super.onReady();
 
     Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
- */
 
-//mocking NoteView
-  @override
+  //mocking NoteView
+  /*  @override
   void onReady() {
     super.onReady();
 
@@ -84,7 +83,7 @@ class NoteController extends GetxController {
       // 🛑 COMMENT OUT THE REAL DATABASE CALL FOR NOW
       // loadNotes();
     });
-  }
+  } */
 
   //UI Action 1:Read
   void loadNotes() {
