@@ -38,11 +38,52 @@ class NoteController extends GetxController {
   //add in onReady
   //with delay for 100% gaurantee for old devices
 
-  @override
+  //comment out for mocking
+  /*  @override
   void onReady() {
     super.onReady();
 
     Future.delayed(Duration(milliseconds: 100), () => loadNotes());
+  }
+ */
+
+//mocking NoteView
+  @override
+  void onReady() {
+    super.onReady();
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      // 🛑 TEMPORARY DUMMY DATA FOR UI TESTING 🛑
+      noteList.assignAll([
+        NoteModel(
+          id: '1',
+          title: 'Grocery List',
+          content:
+              'Almond milk, eggs, whole wheat bread, and spinach for the week.',
+          createdAt: DateTime.now().toIso8601String(),
+          isImportant: false,
+        ),
+        NoteModel(
+          id: '2',
+          title: 'App Ideas',
+          content:
+              'A clean architecture note taking app with a Gen-Z minimalist aesthetic. Must use GetX.',
+          createdAt: DateTime.now().toIso8601String(),
+          isImportant: true,
+        ),
+        NoteModel(
+          id: '3',
+          title: '', // Testing what happens if title is empty
+          content:
+              'This note has no title, just some random thoughts and musings for the day.',
+          createdAt: DateTime.now().toIso8601String(),
+          isImportant: false,
+        ),
+      ]);
+
+      // 🛑 COMMENT OUT THE REAL DATABASE CALL FOR NOW
+      // loadNotes();
+    });
   }
 
   //UI Action 1:Read
