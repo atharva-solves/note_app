@@ -33,10 +33,16 @@ class NoteController extends GetxController {
 
   RxList<NoteModel> noteList = <NoteModel>[].obs;
 
+  //solved ghost Ref bug
+  //remove loadNotes() from onInit
+  //add in onReady
+  //with delay for 100% gaurantee for old devices
+
   @override
-  void onInit() {
-    super.onInit();
-    loadNotes();
+  void onReady() {
+    super.onReady();
+
+    Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
 
   //UI Action 1:Read
