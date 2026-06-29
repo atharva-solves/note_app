@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_app/core/routes/app_pages.dart';
+import 'package:note_app/core/routes/app_routes.dart';
 import '../controllers/note_controller.dart';
 
 // By extending GetView<NoteController>, GetX automatically finds our brain in memory
@@ -9,7 +11,6 @@ class NotesView extends GetView<NoteController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gen-Z Minimalist flat white background
       backgroundColor: Colors.white,
 
       appBar: AppBar(
@@ -60,7 +61,7 @@ class NotesView extends GetView<NoteController> {
             return GestureDetector(
               onTap: () {
                 // Clicking an existing note passes that specific note to the editor
-                Get.toNamed('/edit-note', arguments: note);
+                Get.toNamed(AppRoutes.editNote, arguments: note);
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -141,7 +142,7 @@ class NotesView extends GetView<NoteController> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () {
           // Passing 'null' tells the next screen: "This is a brand new note!"
-          Get.toNamed('/edit-note', arguments: null);
+          Get.toNamed(AppRoutes.editNote, arguments: null);
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
