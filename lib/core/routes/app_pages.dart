@@ -19,8 +19,8 @@ abstract class AppPages {
       binding: NoteBinding(),
     ),
     GetPage(
-      name: AppRoutes.addEditNote,
-      page: () => const UnifiedAddEditNoteView(),
+      name: AppRoutes.editNote,
+      page: () => const EditditNoteView(),
     ),
   ];
 }

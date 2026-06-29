@@ -4,5 +4,5 @@ abstract class AppRoutes {
 
 //var
   static const home = '/notes';
-  static const addEditNote = '/add-edit-note';
+  static const editNote = '/edit-note';
 }
