@@ -10,7 +10,9 @@ class AddNoteUsecase {
 
   Future<void> execute(NoteModel noteModel) async {
     final List<NoteModel> currentList = _noteRepository.getNotes();
-
+    
+    
+    print('AddNoteUC -> execute  -> note title is -> ${noteModel.title}');
     currentList.insert(0, noteModel);
 
 //(- of GetStor) Fetch list , do action , and save entire list Every time

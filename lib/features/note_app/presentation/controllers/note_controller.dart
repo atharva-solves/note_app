@@ -39,10 +39,15 @@ class NoteController extends GetxController {
   //with delay for 100% gaurantee for old devices
 
   //comment out for mocking
+
   @override
   void onReady() {
     super.onReady();
-
+    if (noteList.isNotEmpty) {
+      print(
+        'noteCtrl -> onReady -> note title os latest note is is -> ${noteList[0].title}',
+      );
+    }
     Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
 
@@ -94,6 +99,7 @@ class NoteController extends GetxController {
   //UI Action 2: Create
   Future<void> addNote(NoteModel note) async {
     await _addNoteUsecase.execute(note);
+    print('noteCtrl -> addNote -> note title is -> ${note.title}');
     loadNotes();
   }
 
