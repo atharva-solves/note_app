@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:note_app/core/routes/app_pages.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import '../controllers/note_controller.dart';
 

@@ -25,8 +25,14 @@ class NoteRepositoriesImpl implements NoteRepository {
   List<NoteModel> getNotes() {
     //raw data fetch - map,conv -store in var- return
 
-    List<dynamic> rawData = _localDataSource.getNotesFromStorage();
-    List<NoteModel> listOfNoteModel = rawData
+    // 1. Fetch the raw dynamic data (might be null)
+    dynamic rawData = _localDataSource.getNotesFromStorage();
+
+    // 2. The Shield: If it's null, force it to be an empty list []
+    List<dynamic> safeList = rawData as List<dynamic>? ?? [];
+
+    
+    List<NoteModel> listOfNoteModel = safeList
         .map((rawMap) => NoteModel.fromJson(rawMap))
         .toList();
 
@@ -41,6 +47,11 @@ class NoteRepositoriesImpl implements NoteRepository {
         .map((noteModel) => noteModel.toJson())
         .toList();
 
+    if (notes.isNotEmpty) {
+      print(
+        'rep Impl -> saveNotes -> Latest note\'s title is -> ${notes[0].title}',
+      );
+    }
     await _localDataSource.saveNotesToStorage(rawData);
   }
 }

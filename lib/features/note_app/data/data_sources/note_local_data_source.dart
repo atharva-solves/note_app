@@ -17,11 +17,18 @@ class NoteLocalDataSource {
 
   //get ,save methods
 
+  //added return to pass data back successfully
   dynamic getNotesFromStorage() {
-    _storageService.readData(_noteKey);
+    return _storageService.readData(_noteKey);
   }
 
   Future<void> saveNotesToStorage(List<dynamic> rawNotesList) async {
+    if (rawNotesList.isNotEmpty) {
+      // Safe check before printing
+      print(
+        'LDS -> saveNotesToStorage -> Latest note title is -> ${rawNotesList[0]['title']}',
+      ); // ✅ Map syntax
+    }
     await _storageService.writeData(_noteKey, rawNotesList);
   }
 }

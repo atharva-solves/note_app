@@ -12,12 +12,14 @@ class EditditNoteView extends StatefulWidget {
 }
 
 class _EditditNoteViewState extends State<EditditNoteView> {
-  //late :only init when actually page?view is opened(init).
+  //late :only init when actually page/view is opened(init).
   late TextEditingController _titleController;
   late TextEditingController _contentController;
 
   //arg receive
-  final NoteModel? _existingNote = Get.arguments as NoteModel?;
+  //remove 'final' because if this starts as 'null', 
+  // it will transform into a real note the second the user types a letter!
+   NoteModel? _currentNote = Get.arguments as NoteModel?;
 
   //Birth
   @override
@@ -26,10 +28,10 @@ class _EditditNoteViewState extends State<EditditNoteView> {
 
     //fill if note exist else empty str
     _titleController = TextEditingController(
-      text: _existingNote != null ? _existingNote.title : '',
+      text: _currentNote != null ? _currentNote!.title : '',
     );
     _contentController = TextEditingController(
-      text: _existingNote != null ? _existingNote.content : '',
+      text: _currentNote != null ? _currentNote!.content : '',
     );
   }
 
