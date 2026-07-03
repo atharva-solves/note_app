@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
+import 'package:note_app/features/note_app/presentation/widgets/note_card.dart';
 import '../controllers/note_controller.dart';
 
 // By extending GetView<NoteController>, GetX automatically finds our brain in memory
 class NotesView extends GetView<NoteController> {
   const NotesView({super.key});
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -59,79 +58,7 @@ class NotesView extends GetView<NoteController> {
           itemBuilder: (context, index) {
             final note = controller.noteList[index];
 
-            return GestureDetector(
-              onTap: () {
-                // Clicking an existing note passes that specific note to the editor
-                Get.toNamed(AppRoutes.editNote, arguments: note);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.grey.shade200,
-                  ), // Clean, subtle border
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // TITLE (With fallback for empty titles)
-                    Text(
-                      note.title.trim().isNotEmpty ? note.title : 'Untitled',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // CONTENT
-                    Expanded(
-                      child: Text(
-                        note.content,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    // BOTTOM ROW: IMPORTANT & DELETE
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Important Toggle (Star)
-                        GestureDetector(
-                          onTap: () => controller.toggleImportant(note.id),
-                          child: Icon(
-                            note.isImportant
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            color: note.isImportant
-                                ? Colors.black
-                                : Colors.grey.shade400,
-                            size: 24,
-                          ),
-                        ),
-                        // Delete Button
-                        GestureDetector(
-                          onTap: () => controller.deleteNote(note.id),
-                          child: Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.grey.shade400,
-                            size: 22,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return NoteCardWidget(note: note, controller: controller);
           },
         );
       }),
