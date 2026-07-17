@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
@@ -7,6 +8,8 @@ import 'package:note_app/core/routes/app_pages.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 
 void main() async {
+
+
   WidgetsFlutterBinding.ensureInitialized();
 
   //start GetStor engine in phones hardware
@@ -14,6 +17,9 @@ void main() async {
 
   //since Core, put Instance before app Created .
   Get.put(StorageService());
+
+  //  Flip the Main Power Switch to turn on the Firebase Kitchen!
+  await Firebase.initializeApp();
 
   runApp(const MyApp());
 }

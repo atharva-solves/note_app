@@ -3,6 +3,10 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+
+    //Give [goog serv PLUGIN] (Translation glasses to Construction crew-gradle )
+    //gradle builds way to kitchen according to Map(goog serv json)
+    id("com.google.gms.google-services")
 }
 
 android {
