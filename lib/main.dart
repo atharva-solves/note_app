@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   //start GetStor engine in phones hardware
-  GetStorage.init();
+  await GetStorage.init();
 
   //since Core, put Instance before app Created .
   Get.put(StorageService());
