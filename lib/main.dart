@@ -5,7 +5,6 @@ import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:note_app/core/routes/app_pages.dart';
-import 'package:note_app/core/services/auth_service.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 
 void main() async {
@@ -19,9 +18,6 @@ void main() async {
 
   //  Flip the Main Power Switch to turn on the Firebase Kitchen!
   await Firebase.initializeApp();
-
-  //(Init Managet who talks to sec staff FB Auth)
-  Get.put(AuthService());
 
   runApp(const MyApp());
 }
