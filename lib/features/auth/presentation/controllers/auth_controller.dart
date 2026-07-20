@@ -1,0 +1,114 @@
+import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:note_app/features/auth/domain/entity/user_entity.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
+
+class AuthController extends GetxController {
+  final SignUpUscecase _signUpUscecase;
+  final SignInUsecase _signInUsecase;
+  final SignOutUsecase _signOutUsecase;
+  final DeleteAccountUsecase _deleteAccountUsercase;
+
+  AuthController({
+    required SignUpUscecase signUpUsecase,
+    required SignInUsecase signInUsecase,
+    required SignOutUsecase signOutUsecase,
+    required DeleteAccountUsecase deleteAccountUsecase,
+  }) : _signUpUscecase = signUpUsecase,
+       _signInUsecase = signInUsecase,
+       _signOutUsecase = signOutUsecase,
+       _deleteAccountUsercase = deleteAccountUsecase;
+
+  RxBool isLoading = false.obs;
+  RxString errorMessage = ''.obs;
+
+  //type cast with =<> , and init with null(first time app open or after sign out or delete).
+  Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
+
+  
+  //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.
+  Future<void> signUp({required String email, required String password}) async {
+    try {
+      errorMessage.value = '';
+      isLoading.value = true;
+
+      debugPrint('auth>presentation>ctrl>SignUp Started');
+
+      final UserEntity user = await _signUpUscecase.call(
+        email: email,
+        password: password,
+      );
+      currentUser.value = user;
+
+      debugPrint("Auth>pres>ctr>sign up SUCCESSFUL : email : ${user.email} ");
+
+      isLoading.value = false;
+    } catch (e) {
+      debugPrint("Caught Exception in auth ctr signUP : $e");
+
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> signIn({required String email, required String password}) async {
+    try {
+      errorMessage.value = '';
+      isLoading.value = true;
+
+      debugPrint('auth>presentation>ctrl>SignIn Started');
+
+      final user = await _signInUsecase.call(email: email, password: password);
+
+      currentUser.value = user;
+
+      debugPrint("auth>pres>ctrl>signIn Successfull : $currentUser");
+    } catch (e) {
+      debugPrint("Error: $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      debugPrint("auth>ctrl>signOut Starting");
+      await _signOutUsecase.call();
+
+      //State clear from UI variable currentUser . if not then flutter thinks there's user still alive and stuck on HomeScreen.
+      currentUser.value = null;
+
+      debugPrint("signOut Successful");
+    } catch (e) {
+      debugPrint("Error:$e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    try {
+      errorMessage.value = '';
+      isLoading.value = true;
+
+      debugPrint("Auth>pres>ctr>Delete() Started");
+      await _deleteAccountUsercase.call();
+      debugPrint("Deleted Successfully");
+
+      //State Clearance
+      currentUser.value = null;
+    } catch (e) {
+      debugPrint("Error :$e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+}
