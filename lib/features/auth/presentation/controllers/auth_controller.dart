@@ -29,7 +29,6 @@ class AuthController extends GetxController {
   //type cast with =<> , and init with null(first time app open or after sign out or delete).
   Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
 
-  
   //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.
   Future<void> signUp({required String email, required String password}) async {
     try {
@@ -44,6 +43,11 @@ class AuthController extends GetxController {
       );
       currentUser.value = user;
 
+      Get.snackbar(
+        "Account created",
+        'Welcome to Note App',
+        snackPosition: SnackPosition.BOTTOM,
+      );
       debugPrint("Auth>pres>ctr>sign up SUCCESSFUL : email : ${user.email} ");
 
       isLoading.value = false;
@@ -51,6 +55,12 @@ class AuthController extends GetxController {
       debugPrint("Caught Exception in auth ctr signUP : $e");
 
       errorMessage.value = e.toString();
+
+      Get.snackbar(
+        "Sign-up failed!",
+        'Error:$errorMessage',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -67,10 +77,21 @@ class AuthController extends GetxController {
 
       currentUser.value = user;
 
+      Get.snackbar(
+        "Sign-in Successful",
+        'Welcome Back to Note App',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+
       debugPrint("auth>pres>ctrl>signIn Successfull : $currentUser");
     } catch (e) {
       debugPrint("Error: $e");
       errorMessage.value = e.toString();
+      Get.snackbar(
+        "Sign-in failed!",
+        'Error:$errorMessage',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -85,9 +106,20 @@ class AuthController extends GetxController {
       currentUser.value = null;
 
       debugPrint("signOut Successful");
+
+      Get.snackbar(
+        "Signed Out",
+        'See you soon',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } catch (e) {
       debugPrint("Error:$e");
       errorMessage.value = e.toString();
+      Get.snackbar(
+        "Sign-out failed!",
+        'Error:$errorMessage',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -104,9 +136,16 @@ class AuthController extends GetxController {
 
       //State Clearance
       currentUser.value = null;
+
+      Get.snackbar("Account deleted", '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       debugPrint("Error :$e");
       errorMessage.value = e.toString();
+      Get.snackbar(
+        "Deleting failed!",
+        'Error:$errorMessage',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
