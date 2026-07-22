@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:note_app/features/auth/data/models/user_model.dart';
 
@@ -7,6 +8,9 @@ abstract class AuthRemoteDatasource {
   Future<UserModel> signInWithEmail(String email, String password);
   Future<void> signOut();
   Future<void> deleteAccount();
+
+  //null if SignOut or Delete. else user
+  Stream<UserModel?> get authStateStream;
 }
 
 class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
@@ -89,8 +93,24 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
       debugPrint('auth>data>deletAcc > FB Exception:$e');
       rethrow;
     } catch (e) {
-      debugPrint("auth>data>delete> Data processing error:$e");
+      debugPrint("auth>data>delete> error:$e");
       rethrow;
     }
+  }
+
+  @override
+  Stream<UserModel?> get authStateStream {
+    //raw stream of nullable FBUser sent by firebase
+    Stream<User?> firebaseUserStram = _firebaseAuth.authStateChanges();
+
+    //converting that stream into stream of nullable UserModel & store it in var
+    Stream<UserModel?> userModelStream = firebaseUserStram.map((firebaseUser) {
+      if (firebaseUser == null) {
+        return null;
+      }
+      return UserModel.fromFireBaseUser(firebaseUser: firebaseUser);
+    });
+
+    return userModelStream;
   }
 }
