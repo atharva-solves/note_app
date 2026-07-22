@@ -4,6 +4,7 @@ import 'package:note_app/core/services/local_storage_service.dart';
 import 'package:note_app/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:note_app/features/auth/data/repositories_impl/auth_repository_impl.dart';
 import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
@@ -15,7 +16,7 @@ class InitialBinding extends Bindings {
   void dependencies() {
     //since Core, put Instance before app Created .
     Get.put(StorageService());
-    
+
     //here is the 1st actual instance (FB.instance) .(source of Waterfall)
     //else is waterfall
     Get.put<FirebaseAuth>(FirebaseAuth.instance, permanent: true);
@@ -43,12 +44,17 @@ class InitialBinding extends Bindings {
       DeleteAccountUsecase(authRepo: Get.find<AuthRepository>()),
     );
 
+    Get.put<AuthStatusUsecase>(
+      AuthStatusUsecase(authRepo: Get.find<AuthRepository>()),
+    );
+
     Get.put<AuthController>(
       AuthController(
         signUpUsecase: Get.find<SignUpUscecase>(),
         signInUsecase: Get.find<SignInUsecase>(),
         signOutUsecase: Get.find<SignOutUsecase>(),
         deleteAccountUsecase: Get.find<DeleteAccountUsecase>(),
+        authStatusUsecase: Get.find<AuthStatusUsecase>(),
       ),
       permanent: true,
     );
