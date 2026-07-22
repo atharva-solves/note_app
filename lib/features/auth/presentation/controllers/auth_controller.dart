@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
+import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
@@ -12,13 +14,16 @@ class AuthController extends GetxController {
   final SignInUsecase _signInUsecase;
   final SignOutUsecase _signOutUsecase;
   final DeleteAccountUsecase _deleteAccountUsercase;
+  final AuthStatusUsecase _authStatusUsecase;
 
   AuthController({
     required SignUpUscecase signUpUsecase,
     required SignInUsecase signInUsecase,
     required SignOutUsecase signOutUsecase,
     required DeleteAccountUsecase deleteAccountUsecase,
-  }) : _signUpUscecase = signUpUsecase,
+    required AuthStatusUsecase authStatusUsecase,
+  }) : _authStatusUsecase = authStatusUsecase,
+       _signUpUscecase = signUpUsecase,
        _signInUsecase = signInUsecase,
        _signOutUsecase = signOutUsecase,
        _deleteAccountUsercase = deleteAccountUsecase;
@@ -28,6 +33,35 @@ class AuthController extends GetxController {
 
   //type cast with =<> , and init with null(first time app open or after sign out or delete).
   Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
+
+  @override
+  void onInit() {
+    super.onInit();
+
+    //1st ensure currUser Rx var is tiead/joined to fb>DM>UEn? (from UC)Stream
+
+    currentUser.bindStream(_authStatusUsecase.call());
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+
+    //in dish stack we cannot add a half incomplete dish
+    //ensure dish is completely made the add/remove
+    //Ensure Page is ready and then only do Navigation<-- custom func
+
+    ever(currentUser, _setInitialScreen);
+  }
+
+  //custom function to route according to auth Status
+  void _setInitialScreen(UserEntity? user) {
+    if (user == null) {
+      Get.offAllNamed(AppRoutes.login);
+    } else {
+      Get.offAllNamed(AppRoutes.home);
+    }
+  }
 
   //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.
   Future<void> signUp({required String email, required String password}) async {

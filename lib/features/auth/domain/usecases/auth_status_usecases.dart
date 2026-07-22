@@ -1,10 +1,10 @@
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
 import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
 
-class AuthStatusUsecases {
+class AuthStatusUsecase {
   final AuthRepository _authRepository;
 
-  AuthStatusUsecases({required AuthRepository authRepo})
+  AuthStatusUsecase({required AuthRepository authRepo})
     : _authRepository = authRepo;
 
   Stream<UserEntity?> call() {

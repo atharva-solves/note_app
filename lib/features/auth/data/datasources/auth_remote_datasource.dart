@@ -104,7 +104,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
     Stream<User?> firebaseUserStram = _firebaseAuth.authStateChanges();
 
     //converting that stream into stream of nullable UserModel & store it in var
-    Stream<UserModel?> userModelStream = firebaseUserStram.map((firebaseUser) {
+    Stream<UserModel?> userModelStream = firebaseUserStram.map((User? firebaseUser) {
       if (firebaseUser == null) {
         return null;
       }
