@@ -1,4 +1,9 @@
 goog serv json :- 
+-project info/config (like which providers enabled)
 -Map (FB Gps Coord ,locn) 
 -key card to get into kitchen (passwords)
 -readed by gradle (construction crew) with Goog serv PLUGIN (Transln glasses)
+
+! on each new config in console
+  download that new .json (new config)
+  delete old ,add new.
