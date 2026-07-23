@@ -34,31 +34,50 @@ class AuthController extends GetxController {
   //type cast with =<> , and init with null(first time app open or after sign out or delete).
   Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
 
-  @override
+  /* @override
   void onInit() {
     super.onInit();
 
     //1st ensure currUser Rx var is tiead/joined to fb>DM>UEn? (from UC)Stream
 
-    currentUser.bindStream(_authStatusUsecase.call());
-  }
+
+//Challenge Error Learning:
+//Null-To-Null Trap , to be efficient and have Best performance
+//GetX donot updates its Rx Var if old==new (Rx deaf <>(Null) == fb new null)
+//there sore custom Nav Func not called by 'ever' since no change
+////Nav screen Stuck
+///SOLUTION:Dart inbuilt .listen method to listen which byPass this == rule
+///   
+    
+    //currentUser.bindStream(_authStatusUsecase.call());
+  } */
 
   @override
   void onReady() {
     super.onReady();
 
+    //Null to Null error:so this is cancelled
     //in dish stack we cannot add a half incomplete dish
     //ensure dish is completely made the add/remove
     //Ensure Page is ready and then only do Navigation<-- custom func
 
-    ever(currentUser, _setInitialScreen);
+    //ever(currentUser, _setInitialScreen);
+
+    //Dart listener:
+
+    _authStatusUsecase.call().listen((UserEntity? user) {
+      currentUser.value = user;
+      _setInitialScreen(user);
+    });
   }
 
   //custom function to route according to auth Status
   void _setInitialScreen(UserEntity? user) {
     if (user == null) {
+      debugPrint("Auth Stream: User is null -> Routing to Login");
       Get.offAllNamed(AppRoutes.login);
     } else {
+      debugPrint("Auth Stream: User active -> Routing to Home");
       Get.offAllNamed(AppRoutes.home);
     }
   }

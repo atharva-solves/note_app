@@ -4,6 +4,7 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:note_app/core/bindings/initial_binding.dart';
 import 'package:note_app/core/routes/app_pages.dart';
+import 'package:note_app/core/routes/app_routes.dart';
 
 void main() async {
   //since await before runApp,WFB.eI() ==> connect flutter framework(Dart code-wid ,ctr..)and Flutter Engine(C++: draws actual the pixel)
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
       ),
 
       //first screen as app opens
-      initialRoute: AppPages.initial,
+      initialRoute: AppRoutes.initial,
 
       //point Routing
       getPages: AppPages.pages,
