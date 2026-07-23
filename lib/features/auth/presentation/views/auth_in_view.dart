@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
 
-class LoginView extends GetView<AuthController> {
-  const LoginView({super.key});
+class AuthView extends GetView<AuthController> {
+  const AuthView({super.key});
 
   // Hardcoded dummy credentials for testing
   static const String _dummyEmail = 'testuser@gmail.com';
