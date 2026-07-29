@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
 import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
@@ -7,6 +8,7 @@ import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
+import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
 
 class AuthController extends GetxController {
   final SignUpUscecase _signUpUscecase;
@@ -14,6 +16,7 @@ class AuthController extends GetxController {
   final SignOutUsecase _signOutUsecase;
   final DeleteAccountUsecase _deleteAccountUsercase;
   final AuthStatusUsecase _authStatusUsecase;
+  final GoogleSignInUsecase _googleSignInUsecase;
 
   AuthController({
     required SignUpUscecase signUpUsecase,
@@ -21,11 +24,13 @@ class AuthController extends GetxController {
     required SignOutUsecase signOutUsecase,
     required DeleteAccountUsecase deleteAccountUsecase,
     required AuthStatusUsecase authStatusUsecase,
+    required GoogleSignInUsecase googleSignInUsecase,
   }) : _authStatusUsecase = authStatusUsecase,
        _signUpUscecase = signUpUsecase,
        _signInUsecase = signInUsecase,
        _signOutUsecase = signOutUsecase,
-       _deleteAccountUsercase = deleteAccountUsecase;
+       _deleteAccountUsercase = deleteAccountUsecase,
+       _googleSignInUsecase = googleSignInUsecase;
 
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
@@ -65,6 +70,7 @@ class AuthController extends GetxController {
     //Dart listener:
 
     _authStatusUsecase.call().listen((UserEntity? userEntity) {
+      debugPrint('change listned in aut ctr>._authStUC.listen');
       currentUser.value = userEntity;
       _setInitialScreen(userEntity);
     });
@@ -196,6 +202,34 @@ class AuthController extends GetxController {
       Get.snackbar(
         "Deleting failed!",
         'Error:$errorMessage',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> googleSignIn() async {
+    try {
+      debugPrint("auth>pres>ctrl>googleSignIn started");
+      isLoading.value = true;
+      errorMessage.value = '';
+
+      final UserEntity user = await _googleSignInUsecase.call();
+      currentUser.value = user;
+      Get.snackbar(
+        "Google Sign-In Successful",
+        'Welcome Back, ${user.email}!',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+
+      debugPrint("auth>pres>ctrl>googleSignIn Successful : ${user.email}");
+    } catch (e) {
+      errorMessage.value = e.toString();
+      debugPrint("auth>pres>ctrl>googleSignIn catched Error :$e");
+      Get.snackbar(
+        "Google Sign-In failed!",
+        'Error: $errorMessage',
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {

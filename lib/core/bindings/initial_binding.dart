@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 import 'package:note_app/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:note_app/features/auth/data/repositories_impl/auth_repository_impl.dart';
@@ -9,6 +10,7 @@ import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
+import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
 import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
 
 class InitialBinding extends Bindings {
@@ -19,9 +21,14 @@ class InitialBinding extends Bindings {
 
     //here is the 1st actual instance (FB.instance) .(source of Waterfall)
     //else is waterfall
+
     Get.put<FirebaseAuth>(FirebaseAuth.instance, permanent: true);
+    Get.put<GoogleSignIn>(GoogleSignIn.instance, permanent: true);
     Get.put<AuthRemoteDatasource>(
-      AuthRemoteDatasourceImpl(firebaseAuth: Get.find<FirebaseAuth>()),
+      AuthRemoteDatasourceImpl(
+        firebaseAuth: Get.find<FirebaseAuth>(),
+        googleSignIn: Get.find<GoogleSignIn>(),
+      ),
       permanent: true,
     );
     Get.put<AuthRepository>(
@@ -48,6 +55,9 @@ class InitialBinding extends Bindings {
       AuthStatusUsecase(authRepo: Get.find<AuthRepository>()),
     );
 
+    Get.put<GoogleSignInUsecase>(
+      GoogleSignInUsecase(authRepo: Get.find<AuthRepository>()),
+    );
     Get.put<AuthController>(
       AuthController(
         signUpUsecase: Get.find<SignUpUscecase>(),
@@ -55,6 +65,7 @@ class InitialBinding extends Bindings {
         signOutUsecase: Get.find<SignOutUsecase>(),
         deleteAccountUsecase: Get.find<DeleteAccountUsecase>(),
         authStatusUsecase: Get.find<AuthStatusUsecase>(),
+        googleSignInUsecase: Get.find<GoogleSignInUsecase>(),
       ),
       permanent: true,
     );
