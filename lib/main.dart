@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:note_app/core/bindings/initial_binding.dart';
 import 'package:note_app/core/routes/app_pages.dart';
 import 'package:note_app/core/routes/app_routes.dart';
@@ -14,6 +15,8 @@ void main() async {
   await GetStorage.init();
   //  Flip the Main Power Switch to turn on the Firebase Kitchen!
   await Firebase.initializeApp();
+
+  await GoogleSignIn.instance.initialize();
 
   runApp(const MyApp());
 }

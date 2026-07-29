@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
 import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
@@ -65,15 +64,15 @@ class AuthController extends GetxController {
 
     //Dart listener:
 
-    _authStatusUsecase.call().listen((UserEntity? user) {
-      currentUser.value = user;
-      _setInitialScreen(user);
+    _authStatusUsecase.call().listen((UserEntity? userEntity) {
+      currentUser.value = userEntity;
+      _setInitialScreen(userEntity);
     });
   }
 
   //custom function to route according to auth Status
-  void _setInitialScreen(UserEntity? user) {
-    if (user == null) {
+  void _setInitialScreen(UserEntity? userEntity) {
+    if (userEntity == null) {
       debugPrint("Auth Stream: User is null -> Routing to Login");
       Get.offAllNamed(AppRoutes.login);
     } else {
