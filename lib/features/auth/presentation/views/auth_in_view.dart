@@ -70,6 +70,16 @@ class AuthView extends GetView<AuthController> {
               // 3. Test Sign Out Use Case
               ElevatedButton(
                 onPressed: () {
+                  debugPrint('[UI Test] Triggering Google Sign in UseCase');
+                  controller.googleSignIn();
+                },
+                child: const Text('3. Test Google Sign in'),
+              ),
+              const SizedBox(height: 12),
+
+              // 4. Test Sign Out Use Case
+              ElevatedButton(
+                onPressed: () {
                   debugPrint('[UI Test] Triggering SignOut UseCase');
                   controller.signOut();
                 },
@@ -77,7 +87,7 @@ class AuthView extends GetView<AuthController> {
               ),
               const SizedBox(height: 12),
 
-              // 4. Test Delete Account Use Case
+              // 5. Test Delete Account Use Case
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
