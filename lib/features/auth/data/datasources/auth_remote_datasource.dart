@@ -10,7 +10,17 @@ abstract class AuthRemoteDatasource {
   Future<void> signOut();
   Future<void> deleteAccount();
   Future<UserModel> signInWithGoogle();
-  
+  Future<void> sendOtp({
+    required String phoneNumber,
+    required Function(String verificationId) onCodeSent,
+    required Function(String errorMessage) onVerificationFailed,
+  });
+
+  Future<UserModel> verifyOtp({
+    required String verificationId,
+    required String smsCode,
+  });
+
   //null if SignOut or Delete. else user
   Stream<UserModel?> get authStateStream;
 }
@@ -147,6 +157,80 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
     } catch (e) {
       debugPrint("Auth>data>sinInWithGoogle>Error:$e");
 
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> sendOtp({
+    required String phoneNumber,
+    required Function(String verificationId) onCodeSent,
+    required Function(String errorMessage) onVerificationFailed,
+  }) async {
+    try {
+      debugPrint('AuthRDS>sendOTP>start');
+
+      await _firebaseAuth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          //if SMS auto Retrival by Android under 60 secs thhen directly verify it , no need of manual otp type page
+          try {
+            debugPrint(
+              'AuthRDS>sendOTP>number verification auto completed now directly signing with cred',
+            );
+            await _firebaseAuth.signInWithCredential(credential);
+          } on Exception catch (e) {
+            debugPrint(
+              'AuthRDS>sendOTP>caught error while signing in after auto sms code retrival:$e',
+            );
+            onVerificationFailed(e.toString());
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          onVerificationFailed(
+            e.message ?? "Verification failed",
+          ); //our call back in param
+        },
+
+        codeSent: (String verificationId, int? resendToken) {
+          onCodeSent(
+            verificationId,
+          ); //example nav to otp typ screen with verCode
+        },
+        codeAutoRetrievalTimeout:
+            (String verificationId) {}, //just wait for user to manually type
+      );
+    } catch (e) {
+      debugPrint('AuthRDS>sendOTP>caught error :$e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<UserModel> verifyOtp({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    try {
+      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+
+      final UserCredential userCredential = await _firebaseAuth
+          .signInWithCredential(credential);
+
+      if (userCredential.user == null) {
+        throw Exception("User is Null after verifying phone otp");
+      }
+
+      final UserModel userModel = UserModel.fromFireBaseUser(
+        firebaseUser: userCredential.user!,
+      );
+
+      return userModel;
+    } catch (e) {
+      debugPrint('AuthRDS>verifyOTP>caught error :$e');
       rethrow;
     }
   }

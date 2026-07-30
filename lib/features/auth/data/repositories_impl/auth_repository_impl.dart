@@ -54,4 +54,29 @@ class AuthRepositoryImpl implements AuthRepository {
         .signInWithGoogle();
     return userEntity;
   }
+
+  @override
+  Future<void> sendOtp({
+    required String phoneNumber,
+    required Function(String verificationId) onCodeSent,
+    required Function(String errorMessage) onVerificationFailed,
+  })  {
+    return  _authRemoteDatasource.sendOtp(
+      phoneNumber: phoneNumber,
+      onCodeSent: onCodeSent,
+      onVerificationFailed: onVerificationFailed,
+    );
+  }
+
+  @override
+  Future<UserEntity> verifyOtp({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    final UserEntity userEntity = await _authRemoteDatasource.verifyOtp(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    return userEntity;
+  }
 }
