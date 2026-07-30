@@ -17,4 +17,18 @@ abstract class AuthRepository {
   Future<void> deleteAccount();
 
   Stream<UserEntity?> get authStatusStream;
+
+  Future<void> sendOtp({
+    required String phoneNumber,
+    required Function(String verificationId)
+    onCodeSent, //nav to otp filling page
+    required Function(String errorMessage)
+    onVerificationFailed, //if phone number invalid
+  });
+
+  //rule for verifying otp
+  Future<UserEntity> verifyOtp({
+    required String verificationId,
+    required String smsCode, //otp
+  });
 }
