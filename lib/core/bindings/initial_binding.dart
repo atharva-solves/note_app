@@ -13,6 +13,7 @@ import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/
 import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/send_otp_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/verify_otp_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/sign_in_anonymously.dart';
 import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
 
 class InitialBinding extends Bindings {
@@ -68,6 +69,10 @@ class InitialBinding extends Bindings {
     Get.put<VerifyOtpUsecase>(
       VerifyOtpUsecase(authRepository: Get.find<AuthRepository>()),
     );
+
+    Get.put<SignInAnonymouslyUsecase>(
+      SignInAnonymouslyUsecase(authRepo: Get.find<AuthRepository>()),
+    );
     Get.put<AuthController>(
       AuthController(
         signUpUsecase: Get.find<SignUpUscecase>(),
@@ -78,6 +83,7 @@ class InitialBinding extends Bindings {
         googleSignInUsecase: Get.find<GoogleSignInUsecase>(),
         sendOtpUsecase: Get.find<SendOtpUsecase>(),
         verifyOtpUsecase: Get.find<VerifyOtpUsecase>(),
+        signInAnonymouslyUsecase: Get.find<SignInAnonymouslyUsecase>(),
       ),
       permanent: true,
     );

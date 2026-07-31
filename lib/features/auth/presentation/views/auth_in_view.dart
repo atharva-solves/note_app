@@ -143,6 +143,30 @@ class AuthView extends GetView<AuthController> {
                         : const Text('6. Test Phone Auth ($_dummyPhone)'),
                   ),
                 ),
+
+                Obx(
+                  () => TextButton(
+                    onPressed: controller.isLoading.value
+                        ? null
+                        : () {
+                            debugPrint("UI: Guest Login Button Pressed");
+                            controller.signInAnonymously();
+                          },
+                    child: controller.isLoading.value
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            "Continue as Guest",
+                            style: TextStyle(
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                  ),
+                ),
               ],
             ),
           ),

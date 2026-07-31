@@ -60,8 +60,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String phoneNumber,
     required Function(String verificationId) onCodeSent,
     required Function(String errorMessage) onVerificationFailed,
-  })  {
-    return  _authRemoteDatasource.sendOtp(
+  }) {
+    return _authRemoteDatasource.sendOtp(
       phoneNumber: phoneNumber,
       onCodeSent: onCodeSent,
       onVerificationFailed: onVerificationFailed,
@@ -77,6 +77,14 @@ class AuthRepositoryImpl implements AuthRepository {
       verificationId: verificationId,
       smsCode: smsCode,
     );
+    return userEntity;
+  }
+
+  @override
+  Future<UserEntity> signInAnonymously() async {
+    final UserEntity userEntity = await _authRemoteDatasource
+        .signInAnonymously();
+
     return userEntity;
   }
 }

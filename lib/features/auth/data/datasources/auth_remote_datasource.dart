@@ -21,6 +21,7 @@ abstract class AuthRemoteDatasource {
     required String smsCode,
   });
 
+  Future<UserModel> signInAnonymously();
   //null if SignOut or Delete. else user
   Stream<UserModel?> get authStateStream;
 }
@@ -91,6 +92,13 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
   @override
   Future<void> signOut() async {
     try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null && user.isAnonymous) {
+        debugPrint(
+          "AuthRDS>signout>User is Anonymous , Deleting user from console",
+        );
+        await user.delete();
+      }
       await _firebaseAuth.signOut();
     } on FirebaseAuthException catch (e) {
       debugPrint("auth>data>signOut > FB Exception :$e");
@@ -232,6 +240,28 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
       return userModel;
     } catch (e) {
       debugPrint('AuthRDS>verifyOTP>caught error :$e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<UserModel> signInAnonymously() async {
+    try {
+      final UserCredential userCredential = await _firebaseAuth
+          .signInAnonymously();
+      if (userCredential.user == null) {
+        throw Exception(
+          'AuthRDS>signInAnonlymously>user sent by FBA UCred is null',
+        );
+      }
+
+      final UserModel userModel = UserModel.fromFireBaseUser(
+        firebaseUser: userCredential.user!,
+      );
+
+      return userModel;
+    } catch (e) {
+      debugPrint("AuthRDS>signInAnonymously>Error - ${e.toString()}");
       rethrow;
     }
   }

@@ -10,6 +10,7 @@ import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/
 import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/send_otp_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/verify_otp_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/sign_in_anonymously.dart';
 
 class AuthController extends GetxController {
   final SignUpUscecase _signUpUscecase;
@@ -20,6 +21,7 @@ class AuthController extends GetxController {
   final GoogleSignInUsecase _googleSignInUsecase;
   final SendOtpUsecase _sendOtpUsecase;
   final VerifyOtpUsecase _verifyOtpUsecase;
+  final SignInAnonymouslyUsecase _signInAnonymouslyUsecase;
 
   AuthController({
     required SignUpUscecase signUpUsecase,
@@ -30,6 +32,7 @@ class AuthController extends GetxController {
     required GoogleSignInUsecase googleSignInUsecase,
     required SendOtpUsecase sendOtpUsecase,
     required VerifyOtpUsecase verifyOtpUsecase,
+    required SignInAnonymouslyUsecase signInAnonymouslyUsecase,
   }) : _authStatusUsecase = authStatusUsecase,
        _signUpUscecase = signUpUsecase,
        _signInUsecase = signInUsecase,
@@ -37,7 +40,8 @@ class AuthController extends GetxController {
        _deleteAccountUsercase = deleteAccountUsecase,
        _googleSignInUsecase = googleSignInUsecase,
        _sendOtpUsecase = sendOtpUsecase,
-       _verifyOtpUsecase = verifyOtpUsecase;
+       _verifyOtpUsecase = verifyOtpUsecase,
+       _signInAnonymouslyUsecase = signInAnonymouslyUsecase;
 
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
@@ -328,7 +332,27 @@ class AuthController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
-      debugPrint("Auth>pres>ctrl>verifyOtp finally >Exception: ${errorMessage.value}");
+      debugPrint(
+        "Auth>pres>ctrl>verifyOtp finally >Exception: ${errorMessage.value}",
+      );
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> signInAnonymously() async {
+    try {
+      debugPrint('auth ctr>signInAnonymously>started');
+      isLoading.value = true;
+      errorMessage.value = "";
+      UserEntity userEntity = await _signInAnonymouslyUsecase
+          .signInAnonymouslyUseCase();
+
+      currentUser.value = userEntity;
+      debugPrint('auth ctr>signInAnonymously>successful $userEntity ');
+    } catch (e) {
+      debugPrint('auth ctr>signInAnonymously>catched Error ==> $e');
+      errorMessage.value = e.toString();
+    } finally {
       isLoading.value = false;
     }
   }
