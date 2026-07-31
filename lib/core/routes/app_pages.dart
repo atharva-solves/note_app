@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/presentation/views/auth_in_view.dart';
+import 'package:note_app/features/auth/presentation/views/otp_view.dart';
 import 'package:note_app/features/auth/presentation/views/splash_view.dart';
 import 'package:note_app/features/note_app/presentation/bindings/note_binding.dart';
 import 'package:note_app/features/note_app/presentation/views/notes_view.dart';
@@ -24,5 +25,6 @@ abstract class AppPages {
       binding: NoteBinding(),
     ),
     GetPage(name: AppRoutes.editNote, page: () => const EditditNoteView()),
+    GetPage(name: AppRoutes.otpView, page: ()=> OtpView())
   ];
 }

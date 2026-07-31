@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
+import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart'; // ADDED: Import AuthController
 import 'package:note_app/features/note_app/presentation/widgets/note_card.dart';
 import '../controllers/note_controller.dart';
 
@@ -25,6 +26,17 @@ class NotesView extends GetView<NoteController> {
             letterSpacing: -1.2,
           ),
         ),
+        actions: [
+          // ADDED: Simple red Sign Out button
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            tooltip: 'Sign Out',
+            onPressed: () {
+              debugPrint('[UI] Triggering Sign Out from NotesView');
+              Get.find<AuthController>().signOut();
+            },
+          ),
+        ],
       ),
 
       // Obx is our "Cashier", constantly watching the noteList

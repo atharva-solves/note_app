@@ -212,6 +212,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
     required String smsCode,
   }) async {
     try {
+      //wrap with this wrapper
       final PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,

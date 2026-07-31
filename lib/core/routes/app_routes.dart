@@ -11,4 +11,6 @@ abstract class AppRoutes {
 
   //first screen of app
   static const String initial = splash;
+
+  static const String otpView='/otp';
 }

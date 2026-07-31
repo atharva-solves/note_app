@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
 import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
@@ -9,6 +8,8 @@ import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
 import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/send_otp_usecase.dart';
+import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/verify_otp_usecase.dart';
 
 class AuthController extends GetxController {
   final SignUpUscecase _signUpUscecase;
@@ -17,6 +18,8 @@ class AuthController extends GetxController {
   final DeleteAccountUsecase _deleteAccountUsercase;
   final AuthStatusUsecase _authStatusUsecase;
   final GoogleSignInUsecase _googleSignInUsecase;
+  final SendOtpUsecase _sendOtpUsecase;
+  final VerifyOtpUsecase _verifyOtpUsecase;
 
   AuthController({
     required SignUpUscecase signUpUsecase,
@@ -25,18 +28,23 @@ class AuthController extends GetxController {
     required DeleteAccountUsecase deleteAccountUsecase,
     required AuthStatusUsecase authStatusUsecase,
     required GoogleSignInUsecase googleSignInUsecase,
+    required SendOtpUsecase sendOtpUsecase,
+    required VerifyOtpUsecase verifyOtpUsecase,
   }) : _authStatusUsecase = authStatusUsecase,
        _signUpUscecase = signUpUsecase,
        _signInUsecase = signInUsecase,
        _signOutUsecase = signOutUsecase,
        _deleteAccountUsercase = deleteAccountUsecase,
-       _googleSignInUsecase = googleSignInUsecase;
+       _googleSignInUsecase = googleSignInUsecase,
+       _sendOtpUsecase = sendOtpUsecase,
+       _verifyOtpUsecase = verifyOtpUsecase;
 
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
 
   //type cast with =<> , and init with null(first time app open or after sign out or delete).
   Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
+  RxString verificationId = ''.obs;
 
   /* @override
   void onInit() {
@@ -233,6 +241,94 @@ class AuthController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
+      isLoading.value = false;
+    }
+  }
+
+  //since send otp has callbacks that would terminate at different point of time,
+  //we've puten isLoading false at their respective termination points
+  //not pn finally
+  Future<void> sendOtp(String phoneNumber) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      debugPrint("Auth>pres>ctrl>sendOtp started for $phoneNumber");
+
+      await _sendOtpUsecase.call(
+        phoneNumber: phoneNumber,
+        onCodeSent: (String verId) {
+          debugPrint("Auth>pres>ctrl>OTP Sent! Ticket ID: $verId");
+          verificationId.value = verId;
+          isLoading.value = false;
+          Get.snackbar(
+            "OTP sent",
+            "Please check your phone for 6-digit code",
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          Get.toNamed(AppRoutes.otpView);
+        },
+        onVerificationFailed: (String errorMsg) {
+          debugPrint("Auth>pres>ctrl>sendOtp Failed: $errorMsg");
+          isLoading.value = false;
+          errorMessage.value = errorMsg;
+          Get.snackbar(
+            "Verification Failed",
+            errorMsg,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint("Auth>pres>ctrl>sendOtp Exception: $e");
+      isLoading.value = false;
+      errorMessage.value = e.toString();
+      Get.snackbar(
+        "Error",
+        errorMessage.value,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  //no callbacks here , execute chronologcal therefore finally here.
+  Future<void> verifyOtp(String smsCode) async {
+    try {
+      errorMessage.value = '';
+      isLoading.value = true;
+      debugPrint("Auth>pres>ctrl>verifyOtp started with code: $smsCode");
+
+      if (verificationId.value.isEmpty) {
+        throw Exception("Session expired : please request new otp");
+      }
+
+      final UserEntity userEntity = await _verifyOtpUsecase(
+        smsCode: smsCode,
+        verificationId: verificationId.value,
+      );
+
+      currentUser.value = userEntity;
+
+      Get.snackbar(
+        "Phone Verified",
+        "Welcome to Note App",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+
+      debugPrint(
+        "Auth>pres>ctrl>verifyOtp Successful for user: ${userEntity.id}",
+      );
+    } catch (e) {
+      debugPrint("Auth>pres>ctrl>verifyOtp Exception: $e");
+      isLoading.value = false;
+      errorMessage.value = e.toString();
+
+      Get.snackbar(
+        "Error",
+        errorMessage.value,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      debugPrint("Auth>pres>ctrl>verifyOtp finally >Exception: ${errorMessage.value}");
       isLoading.value = false;
     }
   }
