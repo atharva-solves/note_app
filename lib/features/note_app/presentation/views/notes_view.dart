@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart'; // ADDED: Import AuthController
+import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:note_app/features/note_app/presentation/widgets/note_card.dart';
 import '../controllers/note_controller.dart';
 
-// By extending GetView<NoteController>, GetX automatically finds our brain in memory
 class NotesView extends GetView<NoteController> {
   const NotesView({super.key});
 
@@ -27,15 +26,26 @@ class NotesView extends GetView<NoteController> {
           ),
         ),
         actions: [
-          // ADDED: Simple red Sign Out button
+          // ADDED: Delete Account Button (Red for destructive action warning)
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            icon: const Icon(Icons.person_remove_rounded, color: Colors.red),
+            tooltip: 'Delete Account',
+            onPressed: () {
+              debugPrint('[UI] Triggering Delete Account from NotesView');
+              Get.find<AuthController>().deleteAccount();
+            },
+          ),
+          
+          // MODIFIED: Sign Out Button (Black to match minimal theme)
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black),
             tooltip: 'Sign Out',
             onPressed: () {
               debugPrint('[UI] Triggering Sign Out from NotesView');
               Get.find<AuthController>().signOut();
             },
           ),
+          const SizedBox(width: 8), // Slight right-padding for a polished look
         ],
       ),
 

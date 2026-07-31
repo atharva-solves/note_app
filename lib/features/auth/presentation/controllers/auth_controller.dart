@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart'; // Added for Snackbar styling if needed
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
+import 'package:note_app/core/utils/app_validators.dart'; // ADDED: Import Validators
 import 'package:note_app/features/auth/domain/entity/user_entity.dart';
 import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
@@ -101,6 +103,19 @@ class AuthController extends GetxController {
 
   //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.
   Future<void> signUp({required String email, required String password}) async {
+    // ADDED: Validation Check
+    final emailError = AppValidators.validateEmail(email);
+    final passwordError = AppValidators.validatePassword(password);
+
+    if (emailError != null || passwordError != null) {
+      Get.snackbar(
+        "Invalid Input",
+        emailError ?? passwordError!,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return; // Stop execution here if validation fails
+    }
+
     try {
       errorMessage.value = '';
       isLoading.value = true;
@@ -137,6 +152,19 @@ class AuthController extends GetxController {
   }
 
   Future<void> signIn({required String email, required String password}) async {
+    // ADDED: Validation Check
+    final emailError = AppValidators.validateEmail(email);
+    final passwordError = AppValidators.validatePassword(password);
+
+    if (emailError != null || passwordError != null) {
+      Get.snackbar(
+        "Invalid Input",
+        emailError ?? passwordError!,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return; // Stop execution here if validation fails
+    }
+
     try {
       errorMessage.value = '';
       isLoading.value = true;
@@ -211,11 +239,22 @@ class AuthController extends GetxController {
     } catch (e) {
       debugPrint("Error :$e");
       errorMessage.value = e.toString();
-      Get.snackbar(
-        "Deleting failed!",
-        'Error:$errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      
+      // ADDED: Handling the specific Firebase Security Exception we discussed earlier
+      if (e.toString().contains('requires-recent-login')) {
+        Get.snackbar(
+          'Authentication Required',
+          'For security reasons, please log in again to delete your account.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        await signOut(); // Force sign out to make them refresh their session
+      } else {
+        Get.snackbar(
+          "Deleting failed!",
+          'Error:$errorMessage',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     } finally {
       isLoading.value = false;
     }
@@ -253,6 +292,17 @@ class AuthController extends GetxController {
   //we've puten isLoading false at their respective termination points
   //not pn finally
   Future<void> sendOtp(String phoneNumber) async {
+    // ADDED: Validation Check
+    final phoneError = AppValidators.validatePhone(phoneNumber);
+    if (phoneError != null) {
+      Get.snackbar(
+        "Invalid Phone Number",
+        phoneError,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return; // Stop execution here if validation fails
+    }
+
     try {
       isLoading.value = true;
       errorMessage.value = '';
