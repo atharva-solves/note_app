@@ -1,34 +1,35 @@
+import 'package:flutter/material.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
-
-//this is not core now, it gets feature specific.
-//W H Y ?:
-//1 switch to a different database service called Hive.
-//2 The Testing Superpower (Mocking)
-//3 Memory Efficiency (Single Source of Truth)
+// NoteEntity import removed! LDS shouldn't know about Entities.
 
 class NoteLocalDataSource {
-  //fields ,fin con priv.
   final StorageService _storageService;
   static const String _noteKey = 'MY_NOTES_DATABASE';
 
-  //constructor , with init List bcz _private
   NoteLocalDataSource({required StorageService storageService})
     : _storageService = storageService;
 
-  //get ,save methods
-
-  //added return to pass data back successfully
-  dynamic getNotesFromStorage() {
-    return _storageService.readData(_noteKey);
+  // FIX: Changed return type to List<dynamic>? because it reads raw JSON from storage
+  List<dynamic>? getNotesFromStorage() {
+    try {
+      return _storageService.readData(_noteKey);
+    } catch (e) {
+      debugPrint("note_app>data>note_local_data_source>getNotes : ERROR ==> $e");
+      rethrow;
+    }
   }
 
-  Future<void> saveNotesToStorage(List<dynamic> rawNotesList) async {
-    if (rawNotesList.isNotEmpty) {
-      // Safe check before printing
-      print(
-        'LDS -> saveNotesToStorage -> Latest note title is -> ${rawNotesList[0]['title']}',
-      ); // ✅ Map syntax
+  Future<void> saveNotesToStorage(List<Map<String,dynamic>> rawNotesList) async {
+    try {
+      if (rawNotesList.isNotEmpty) {
+        debugPrint(
+          'LDS -> saveNotesToStorage -> Latest note title is -> ${rawNotesList[0]['title']}',
+        ); 
+      }
+      await _storageService.writeData(_noteKey, rawNotesList);
+    } catch (e) {
+      debugPrint("note_app>data>note_local_data_source>saveNotes : ERROR ==> $e");
+      rethrow;
     }
-    await _storageService.writeData(_noteKey, rawNotesList);
   }
 }

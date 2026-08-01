@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
@@ -31,12 +32,15 @@ class NoteController extends GetxController {
        _deleteNoteUsecase = deleteNoteUsecase,
        _toggleImportantUsecase = toggleImportantUsecase;
 
-  RxList<NoteModel> noteList = <NoteModel>[].obs;
+  RxList<NoteEntity> noteList = <NoteEntity>[].obs;
+  RxBool isLoading = false.obs;
+  RxString errorMessage = ''.obs;
 
   //solved ghost Ref bug
   //remove loadNotes() from onInit
   //add in onReady
   //with delay for 100% gaurantee for old devices
+  //so change is noted by RxList
 
   //comment out for mocking
 
@@ -44,7 +48,7 @@ class NoteController extends GetxController {
   void onReady() {
     super.onReady();
     if (noteList.isNotEmpty) {
-      print(
+      debugPrint(
         'noteCtrl -> onReady -> note title os latest note is is -> ${noteList[0].title}',
       );
     }
@@ -57,9 +61,9 @@ class NoteController extends GetxController {
     super.onReady();
 
     Future.delayed(const Duration(milliseconds: 100), () {
-      // 🛑 TEMPORARY DUMMY DATA FOR UI TESTING 🛑
+      //  TEMPORARY DUMMY DATA FOR UI TESTING 
       noteList.assignAll([
-        NoteModel(
+        NoteEntity(
           id: '1',
           title: 'Grocery List',
           content:
@@ -67,7 +71,7 @@ class NoteController extends GetxController {
           createdAt: DateTime.now().toIso8601String(),
           isImportant: false,
         ),
-        NoteModel(
+        NoteEntity(
           id: '2',
           title: 'App Ideas',
           content:
@@ -75,7 +79,7 @@ class NoteController extends GetxController {
           createdAt: DateTime.now().toIso8601String(),
           isImportant: true,
         ),
-        NoteModel(
+        NoteEntity(
           id: '3',
           title: '', // Testing what happens if title is empty
           content:
@@ -85,39 +89,84 @@ class NoteController extends GetxController {
         ),
       ]);
 
-      // 🛑 COMMENT OUT THE REAL DATABASE CALL FOR NOW
+      // COMMENT OUT THE REAL DATABASE CALL FOR NOW
       // loadNotes();
     });
   } */
 
   //UI Action 1:Read
   void loadNotes() {
-    final notes = _getNotesUsecase.execute();
-    noteList.value = notes;
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      final notes = _getNotesUsecase.execute();
+      noteList.value = notes;
+    } catch (e) {
+      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   //UI Action 2: Create
-  Future<void> addNote(NoteModel note) async {
-    await _addNoteUsecase.execute(note);
-    print('noteCtrl -> addNote -> note title is -> ${note.title}');
-    loadNotes();
+  Future<void> addNote(NoteEntity note) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      await _addNoteUsecase.execute(note);
+      debugPrint('noteCtrl -> addNote -> note title is -> ${note.title}');
+      loadNotes();
+    } catch (e) {
+      debugPrint("note_app>pres>controller>addNotes : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   //UI Action 3:Update
-  Future<void> updateNote(NoteModel updatedNote) async {
-    await _updateNoteUsecase.execute(updatedNote);
-    loadNotes();
+  Future<void> updateNote(NoteEntity updatedNote) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      await _updateNoteUsecase.execute(updatedNote);
+      loadNotes();
+    } catch (e) {
+      debugPrint("note_app>pres>controller>updateNotes : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   //UI Action 4:Delete a note
   Future<void> deleteNote(String noteId) async {
-    await _deleteNoteUsecase.execute(noteId);
-    loadNotes();
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      await _deleteNoteUsecase.execute(noteId);
+      loadNotes();
+    } catch (e) {
+      debugPrint("note_app>pres>controller>deleteNotes : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   //UI Action 5:Toggle IMP
   Future<void> toggleImportant(String noteId) async {
-    await _toggleImportantUsecase.execute(noteId);
-    loadNotes();
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      await _toggleImportantUsecase.execute(noteId);
+      loadNotes();
+    } catch (e) {
+      debugPrint("note_app>pres>controller>toggleImportant : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
-import 'package:note_app/features/note_app/data/repositories_implementation/note_repositories_impl.dart';
+import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
@@ -19,7 +19,7 @@ class NoteBinding extends Bindings {
   @override
   void dependencies() {
     //waterfall init
-    //first (StorServ is init  globally in main before even app is created )
+    //first (StorServ is init  globally in main before even app is created ) (InitialBindings)
     //lazy put -> init only when actually called and needed
 
     //[1] Data source
@@ -31,7 +31,7 @@ class NoteBinding extends Bindings {
     //<abst> ,()=>abImpl() Diff!!
 
     Get.lazyPut<NoteRepository>(
-      () => NoteRepositoriesImpl(
+      () => NoteRepositoryImpl(
         localDataSource: Get.find<NoteLocalDataSource>(),
       ),
     );

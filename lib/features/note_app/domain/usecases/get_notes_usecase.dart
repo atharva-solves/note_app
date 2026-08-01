@@ -1,4 +1,4 @@
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class GetNotesUsecase {
@@ -11,5 +11,5 @@ class GetNotesUsecase {
   GetNotesUsecase({required this.noteRepository});
 
   //actual method
-  List<NoteModel> execute() => noteRepository.getNotes();
+  List<NoteEntity> execute() => noteRepository.getNotes();
 }

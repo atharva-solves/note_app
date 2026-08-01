@@ -1,13 +1,14 @@
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class ToggleImportantUsecase {
   final NoteRepository _noteRepository;
 
-  ToggleImportantUsecase({required NoteRepository noteRepository}) : _noteRepository = noteRepository;
+  ToggleImportantUsecase({required NoteRepository noteRepository})
+    : _noteRepository = noteRepository;
 
   Future<void> execute(String targetID) async {
-    List<NoteModel> currentNotes = _noteRepository.getNotes();
+    List<NoteEntity> currentNotes = _noteRepository.getNotes();
 
     final int index = currentNotes.indexWhere((note) => note.id == targetID);
 

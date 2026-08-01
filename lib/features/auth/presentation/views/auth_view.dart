@@ -92,21 +92,21 @@ class AuthView extends GetView<AuthController> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      onPressed: controller.isLoading.value
+                      onPressed: /* controller.isLoading.value
                           ? null
-                          : () {
+                          : */ () {
                               controller.signIn(
                                 email: _emailController.text.trim(),
                                 password: _passwordController.text.trim(),
                               );
                             },
-                      child: controller.isLoading.value
+                      child: /* controller.isLoading.value
                           ? const SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text(
+                          : */ const Text(
                               'Sign In',
                               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             ),

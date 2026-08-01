@@ -1,12 +1,13 @@
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class UpdateNoteUsecase {
   final NoteRepository _noteRepository;
-  UpdateNoteUsecase({required NoteRepository noteRepository}) : _noteRepository = noteRepository;
+  UpdateNoteUsecase({required NoteRepository noteRepository})
+    : _noteRepository = noteRepository;
 
-  Future<void> execute(NoteModel updatedNote) async {
-    final List<NoteModel> currentNotes = _noteRepository.getNotes();
+  Future<void> execute(NoteEntity updatedNote) async {
+    final List<NoteEntity> currentNotes = _noteRepository.getNotes();
 
     final int index = currentNotes.indexWhere(
       (note) => note.id == updatedNote.id,

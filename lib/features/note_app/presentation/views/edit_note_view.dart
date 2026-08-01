@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,7 +23,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
   //remove 'final' because if this starts as 'null',
   //due to (constantly listen and save business logic)
   // it will transform into a real note the second the user types a letter!
-  NoteModel? _currentNote = Get.arguments as NoteModel?;
+  NoteEntity? _currentNote = Get.arguments as NoteEntity?;
   final NoteController _noteController = Get.find<NoteController>();
   //Birth
   @override
@@ -53,7 +53,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
   }
 
   //runs on every change
-  _autoSaveNote() {
+  void _autoSaveNote() {
     //extract String from ctrl
     final String currentTitle = _titleController.text;
     final String currentContent = _contentController.text;
@@ -67,11 +67,11 @@ class _EditditNoteViewState extends State<EditditNoteView> {
 
     //Soc .Actions A.If new note,ADD(create) else B.Update
     if (_currentNote == null) {
-      _currentNote = NoteModel(
+      _currentNote = NoteEntity(
         id: const Uuid().v4(),
         title: currentTitle,
         content: currentContent,
-        createdAt: DateTime.now().toIso8601String(),
+        createdAt: DateTime.now(),
         isImportant: false,
       );
 

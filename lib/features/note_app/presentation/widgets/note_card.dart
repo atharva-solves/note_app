@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
 
 class NoteCardWidget extends StatelessWidget {
-  final NoteModel note;
+  final NoteEntity note;
   final NoteController controller;
   const NoteCardWidget({
     super.key,

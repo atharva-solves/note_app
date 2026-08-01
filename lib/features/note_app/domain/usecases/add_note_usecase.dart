@@ -1,4 +1,5 @@
-import 'package:note_app/features/note_app/data/models/note_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class AddNoteUsecase {
@@ -6,17 +7,17 @@ class AddNoteUsecase {
 
   final NoteRepository _noteRepository;
 
-  AddNoteUsecase({required NoteRepository noteRepository}) : _noteRepository = noteRepository;
+  AddNoteUsecase({required NoteRepository noteRepository})
+    : _noteRepository = noteRepository;
 
-  Future<void> execute(NoteModel noteModel) async {
-    final List<NoteModel> currentList = _noteRepository.getNotes();
-    
-    
-    print('AddNoteUC -> execute  -> note title is -> ${noteModel.title}');
-    currentList.insert(0, noteModel);
+  Future<void> execute(NoteEntity noteEntity) async {
+    final List<NoteEntity> currentList = _noteRepository.getNotes();
 
-//(- of GetStor) Fetch list , do action , and save entire list Every time
-//unlike SQL :modify that specific data directly in DB.
+    debugPrint('AddNoteUC -> execute  -> note title is -> ${noteEntity.title}');
+    currentList.insert(0, noteEntity);
+
+    //(- of GetStor) Fetch list , do action , and save entire list Every time
+    //unlike SQL :modify that specific data directly in DB.
     await _noteRepository.saveNotes(currentList);
   }
 }

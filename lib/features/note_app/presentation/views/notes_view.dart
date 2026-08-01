@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/presentation/widgets/note_card.dart';
 import '../controllers/note_controller.dart';
 
@@ -78,7 +79,7 @@ class NotesView extends GetView<NoteController> {
           ),
           itemCount: controller.noteList.length,
           itemBuilder: (context, index) {
-            final note = controller.noteList[index];
+            final NoteEntity note = controller.noteList[index];
 
             return NoteCardWidget(note: note, controller: controller);
           },

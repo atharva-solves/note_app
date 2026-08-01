@@ -1,55 +1,47 @@
-class NoteModel {
-  final String id;
-  final String title;
-  final String content;
-  final String createdAt;
-  final bool isImportant; // 🔥 Added for the IMP note marking feature
+import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 
-  // 1. The Standard Constructor
+class NoteModel extends NoteEntity {
   NoteModel({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.createdAt,
-    required this.isImportant,
+    required super.id,
+    required super.title,
+    required super.content,
+    required super.createdAt,
+    required super.isImportant,
   });
 
-  // 2. 📥 FROM JSON: Converts raw map data from the hard drive back into a Dart Object
+  // 1. JSON Deserialization (Map -> Model)
   factory NoteModel.fromJson(Map<String, dynamic> json) {
     return NoteModel(
-      id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? 'Untitled Note',
-      content: json['content']?.toString() ?? '',
-      createdAt: json['created_at']?.toString() ?? DateTime.now().toString(),
-      isImportant: json['is_important'] as bool? ?? false, // Safe fallback default value
+      id: json['id'] as String,
+      title: json['title'] as String,
+      content: json['content'] as String,
+      // JSON doesn't understand DateTime, so we parse the String back into a DateTime object
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      isImportant: json['isImportant'] as bool,
     );
   }
 
-  // 3. 📤 TO JSON: Converts our Dart Object into a raw Map format so GetStorage can write it to disk
+  // 2. JSON Serialization (Model -> Map)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'title': title,
       'content': content,
-      'created_at': createdAt,
-      'is_important': isImportant,
+      // Convert the DateTime object into a JSON-friendly String
+      'createdAt': createdAt.toIso8601String(),
+      'isImportant': isImportant,
     };
   }
 
-  // 4. 🔄 COPY WITH: An industry-standard pattern used to modify a single field (like isImportant) safely
-  NoteModel copyWith({
-    String? id,
-    String? title,
-    String? content,
-    String? createdAt,
-    bool? isImportant,
-  }) {
+  // 3. The Bridge (Entity -> Model)
+  // Used in your Repository when saving data from the UI down to the database
+  factory NoteModel.fromEntity(NoteEntity entity) {
     return NoteModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      content: content ?? this.content,
-      createdAt: createdAt ?? this.createdAt,
-      isImportant: isImportant ?? this.isImportant,
+      id: entity.id,
+      title: entity.title,
+      content: entity.content,
+      createdAt: entity.createdAt,
+      isImportant: entity.isImportant,
     );
   }
 }
