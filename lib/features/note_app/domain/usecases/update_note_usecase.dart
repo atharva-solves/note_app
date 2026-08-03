@@ -1,6 +1,9 @@
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
+/* import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
+
+//--------Note LDS (Get Storage)--------------
+//-------- add note/save note is already upsert. so no need seperate firestore Update UC.
 class UpdateNoteUsecase {
   final NoteRepository _noteRepository;
   UpdateNoteUsecase({required NoteRepository noteRepository})
@@ -20,3 +23,4 @@ class UpdateNoteUsecase {
     }
   }
 }
+ */

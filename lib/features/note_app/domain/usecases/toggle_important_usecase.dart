@@ -7,7 +7,7 @@ class ToggleImportantUsecase {
   ToggleImportantUsecase({required NoteRepository noteRepository})
     : _noteRepository = noteRepository;
 
-  Future<void> execute(String targetID) async {
+  /* Future<void> execute(String targetID) async {
     List<NoteEntity> currentNotes = _noteRepository.getNotes();
 
     final int index = currentNotes.indexWhere((note) => note.id == targetID);
@@ -20,5 +20,13 @@ class ToggleImportantUsecase {
 
       await _noteRepository.saveNotes(currentNotes);
     }
+  } */
+
+  Future<void> call(NoteEntity noteEntity) async {
+    NoteEntity toggledNoteEntity = noteEntity.copyWith(
+      isImportant: !noteEntity.isImportant,
+    );
+
+    await _noteRepository.saveNotes(toggledNoteEntity);
   }
 }

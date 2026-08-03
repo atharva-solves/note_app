@@ -1,15 +1,46 @@
 import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class NoteRepositoryImpl implements NoteRepository {
-  final NoteLocalDataSource _localDataSource;
+  //--------- Note Remote DS (FireStore)-------------
+
+  final NoteRemoteDataSource _noteRemoteDataSource;
+  NoteRepositoryImpl({required NoteRemoteDataSource noteRDS})
+    : _noteRemoteDataSource = noteRDS;
+
+  @override
+  Future<List<NoteEntity>> getAllNotes() async {
+    List<Map<String, dynamic>> rawList = await _noteRemoteDataSource
+        .getAllNotes();
+    List<NoteEntity> noteEntities = rawList
+        .map((rawJson) => NoteModel.fromJson(rawJson))
+        .toList();
+    return noteEntities;
+  }
+
+  @override
+  Future<void> saveNotes(NoteEntity note) async {
+    NoteModel noteModel = NoteModel.fromEntity(note);
+    Map<String, dynamic> rawNote = noteModel.toJson();
+    await _noteRemoteDataSource.saveNote(rawNote);
+  }
+
+  @override
+  Future<void> deleteNote(String noteId) async {
+    await _noteRemoteDataSource.deleteNote(noteId);
+  }
+
+  //--------Note LDS (Get Storage)---------------------
+
+  /*  final NoteLocalDataSource _localDataSource;
 
   NoteRepositoryImpl({required NoteLocalDataSource localDataSource})
     : _localDataSource = localDataSource;
 
-  @override
+ 
   @override
   List<NoteEntity> getNotes() {
     List<dynamic>? rawData = _localDataSource.getNotesFromStorage();
@@ -42,5 +73,5 @@ class NoteRepositoryImpl implements NoteRepository {
       );
     }
     await _localDataSource.saveNotesToStorage(rawData);
-  }
+  } */
 }

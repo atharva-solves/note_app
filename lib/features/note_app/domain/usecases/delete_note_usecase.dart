@@ -1,17 +1,21 @@
-
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
 class DeleteNoteUsecase {
   final NoteRepository _noteRepository;
 
-  DeleteNoteUsecase({required NoteRepository noteRepository}) : _noteRepository = noteRepository;
+  DeleteNoteUsecase({required NoteRepository noteRepository})
+    : _noteRepository = noteRepository;
 
-  Future<void> execute(String targetID) async {
+  /* Future<void> execute(String targetID) async {
     List<NoteEntity> currentList = _noteRepository.getNotes();
 
     currentList.removeWhere((note) => note.id == targetID);
 
     await _noteRepository.saveNotes(currentList);
+  } */
+
+  Future<void> call(String noteId) async {
+    await _noteRepository.deleteNote(noteId);
   }
 }
