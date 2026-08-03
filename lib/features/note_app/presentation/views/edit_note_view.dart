@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
+import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
+import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
 import 'package:uuid/uuid.dart';
@@ -23,7 +25,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
   //remove 'final' because if this starts as 'null',
   //due to (constantly listen and save business logic)
   // it will transform into a real note the second the user types a letter!
-  NoteEntity? _currentNote = Get.arguments as NoteEntity?;
+  NoteEntity? _currentNote = Get.arguments as NoteModel?;
   final NoteController _noteController = Get.find<NoteController>();
   //Birth
   @override
@@ -38,8 +40,9 @@ class _EditditNoteViewState extends State<EditditNoteView> {
       text: _currentNote != null ? _currentNote!.content : '',
     );
 
-    _titleController.addListener(_autoSaveNote);
-    _contentController.addListener(_autoSaveNote);
+    //since firestore R/W limit ,Change business logic from auto save --> save button and back
+    /* _titleController.addListener(_autoSaveNote);
+    _contentController.addListener(_autoSaveNote); */
   }
 
   //Death ! clear ram when view is LEFT
@@ -52,8 +55,9 @@ class _EditditNoteViewState extends State<EditditNoteView> {
     _contentController.dispose();
   }
 
-  //runs on every change
-  void _autoSaveNote() {
+  //runs on every change for local DS Get Storage ,its fast and free
+  //auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
+  _saveNote() {
     //extract String from ctrl
     final String currentTitle = _titleController.text;
     final String currentContent = _contentController.text;
@@ -67,7 +71,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
 
     //Soc .Actions A.If new note,ADD(create) else B.Update
     if (_currentNote == null) {
-      _currentNote = NoteEntity(
+      _currentNote = NoteModel(
         id: const Uuid().v4(),
         title: currentTitle,
         content: currentContent,
@@ -75,20 +79,25 @@ class _EditditNoteViewState extends State<EditditNoteView> {
         isImportant: false,
       );
 
-      _noteController.addNote(_currentNote!);
+      _noteController.saveNote(_currentNote!);
     } else {
       _currentNote = _currentNote!.copyWith(
         title: currentTitle,
         content: currentContent,
       );
-      _noteController.updateNote(_currentNote!);
+      //_noteController.updateNote(_currentNote!);
+
+      //saveNotes , single Upsert Method for RDS FireStore
+      _noteController.saveNote(_currentNote!);
     }
   }
 
   //
   //handle Back buttons
   Future<void> _handleBackButton() async {
-    final String currentTitle = _titleController.text;
+    //Explicit save note UI/UX ,so we dont auto save on back.
+    //changes discarded after back.
+    /* final String currentTitle = _titleController.text;
     final String currentContent = _contentController.text;
 
     if (currentTitle.trim().isEmpty &&
@@ -96,13 +105,14 @@ class _EditditNoteViewState extends State<EditditNoteView> {
         _currentNote != null) {
       //await since noteController's deleteNote uses await.it takes time
       await _noteController.deleteNote(_currentNote!.id);
-    }
+    } */
 
     print(
       "Back Button is Pressed .Local Data Storage List has ${_noteController.noteList.length.toString()} items.   . . . . . = = = = List --> ${_noteController.noteList} .. .. Cureent Note --> ${_currentNote?.title.toString()}",
     );
 
-    _currentNote = null; // Clear the local variable so it knows the note is gone
+    _currentNote =
+        null; // Clear the local variable so it knows the note is gone
     Get.back();
   }
 
@@ -130,6 +140,28 @@ class _EditditNoteViewState extends State<EditditNoteView> {
             onPressed:
                 _handleBackButton, // Runs validation check when clicking app bar arrow
           ),
+          actions: [
+            // Explicit Save Button
+            Obx(() {
+              final bool saving = _noteController.isLoading.value;
+
+              return IconButton(
+                icon: Icon(
+                  Icons.check_rounded,
+                  // Changes color to grey if saving, otherwise black
+                  color: saving ? Colors.grey : Colors.black,
+                  size: 26,
+                ),
+                // Disables the button press while saving to prevent duplicate taps
+                onPressed: saving
+                    ? null
+                    : () {
+                        _saveNote();
+                        _handleBackButton();
+                      },
+              );
+            }),
+          ],
         ),
 
         // 3. Simple Text Input Fields

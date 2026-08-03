@@ -22,7 +22,7 @@ class ToggleImportantUsecase {
     }
   } */
 
-  Future<void> call(NoteEntity noteEntity) async {
+  Future<void> call({required NoteEntity noteEntity}) async {
     NoteEntity toggledNoteEntity = noteEntity.copyWith(
       isImportant: !noteEntity.isImportant,
     );

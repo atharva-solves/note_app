@@ -16,19 +16,20 @@ class NoteController extends GetxController {
 
   final AddNoteUsecase _addNoteUsecase;
   final GetNotesUsecase _getNotesUsecase;
-  final UpdateNoteUsecase _updateNoteUsecase;
+  //since upsert in firestore, there fore no use in RDS
+  //final UpdateNoteUsecase _updateNoteUsecase;
   final DeleteNoteUsecase _deleteNoteUsecase;
   final ToggleImportantUsecase _toggleImportantUsecase;
 
   NoteController({
     required AddNoteUsecase addNoteUsecase,
     required GetNotesUsecase getNotesUsecase,
-    required UpdateNoteUsecase updateNoteUsecase,
+    //required UpdateNoteUsecase updateNoteUsecase,
     required DeleteNoteUsecase deleteNoteUsecase,
     required ToggleImportantUsecase toggleImportantUsecase,
   }) : _addNoteUsecase = addNoteUsecase,
        _getNotesUsecase = getNotesUsecase,
-       _updateNoteUsecase = updateNoteUsecase,
+       // _updateNoteUsecase = updateNoteUsecase,
        _deleteNoteUsecase = deleteNoteUsecase,
        _toggleImportantUsecase = toggleImportantUsecase;
 
@@ -95,7 +96,24 @@ class NoteController extends GetxController {
   } */
 
   //UI Action 1:Read
-  void loadNotes() {
+
+  /////--------------RDS (FireStore)----------
+  Future<void> loadNotes() async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      final notes = await _getNotesUsecase();
+      noteList.assignAll(notes);
+    } catch (e) {
+      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  //----------------LDS Get Storage----------
+  /* void loadNotes() {
     try {
       isLoading.value = true;
       errorMessage.value = '';
@@ -107,14 +125,17 @@ class NoteController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+  } */
+  //----------------Load Notes From Getstorage ENDS---------------
 
   //UI Action 2: Create
-  Future<void> addNote(NoteEntity note) async {
+  Future<void> saveNote(NoteEntity note) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      await _addNoteUsecase.execute(note);
+
+      //just direct() bcz of call in UC ---FOR RDS FireStore
+      await _addNoteUsecase(note);
       debugPrint('noteCtrl -> addNote -> note title is -> ${note.title}');
       loadNotes();
     } catch (e) {
@@ -126,7 +147,9 @@ class NoteController extends GetxController {
   }
 
   //UI Action 3:Update
-  Future<void> updateNote(NoteEntity updatedNote) async {
+
+  //No need for RDS Firestore  bcs Upsert (saveNotes) docRef.set()
+  /*  Future<void> updateNote(NoteEntity updatedNote) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
@@ -139,13 +162,16 @@ class NoteController extends GetxController {
       isLoading.value = false;
     }
   }
-
+ */
   //UI Action 4:Delete a note
   Future<void> deleteNote(String noteId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      await _deleteNoteUsecase.execute(noteId);
+
+      //Direct () .No need of exec bcz call in UC
+      //RDS FireStore
+      await _deleteNoteUsecase(noteId);
       loadNotes();
     } catch (e) {
       debugPrint("note_app>pres>controller>deleteNotes : ERROR ==> $e");
@@ -156,11 +182,15 @@ class NoteController extends GetxController {
   }
 
   //UI Action 5:Toggle IMP
-  Future<void> toggleImportant(String noteId) async {
+  //pass Entity for FireStore RDS
+  Future<void> toggleImportant(NoteEntity noteEntity) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      await _toggleImportantUsecase.execute(noteId);
+
+      //Need to pass Entity for RDS FireStore
+      await _toggleImportantUsecase(noteEntity: noteEntity);
+      //await _toggleImportantUsecase.execute(noteId);
       loadNotes();
     } catch (e) {
       debugPrint("note_app>pres>controller>toggleImportant : ERROR ==> $e");

@@ -60,7 +60,7 @@ class NoteCardWidget extends StatelessWidget {
               children: [
                 // Important Toggle (Star)
                 GestureDetector(
-                  onTap: () => controller.toggleImportant(note.id),
+                  onTap: () => controller.toggleImportant(note),
                   child: Icon(
                     note.isImportant
                         ? Icons.star_rounded

@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
@@ -23,18 +25,29 @@ class NoteBinding extends Bindings {
     //lazy put -> init only when actually called and needed
 
     //[1] Data source
-    Get.lazyPut(
-      () => NoteLocalDataSource(storageService: Get.find<StorageService>()),
+    //RDS Firestore first root dependency
+    Get.lazyPut<NoteRemoteDataSource>(
+      () => NoteRemoteDataSourceImpl(
+        firebasefireStore: FirebaseFirestore.instance,
+      ),
     );
+    //LDS Get storage
+    /*  Get.lazyPut(
+      () => NoteLocalDataSource(storageService: Get.find<StorageService>()),
+    ); */
 
     //[2] Repo: bind abstract contract and implemen worker together.
     //<abst> ,()=>abImpl() Diff!!
 
+    //RDS FireStore
     Get.lazyPut<NoteRepository>(
+      () => NoteRepositoryImpl(noteRDS: Get.find<NoteRemoteDataSource>()),
+    );
+    /*  Get.lazyPut<NoteRepository>(
       () => NoteRepositoryImpl(
         localDataSource: Get.find<NoteLocalDataSource>(),
       ),
-    );
+    ); */
 
     //[3] UseCases (single action seperated Business logic)
     Get.lazyPut(
@@ -43,9 +56,11 @@ class NoteBinding extends Bindings {
     Get.lazyPut(
       () => AddNoteUsecase(noteRepository: Get.find<NoteRepository>()),
     );
-    Get.lazyPut(
-      () => UpdateNoteUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
+    /* Get.lazyPut(
+      //firestore RDS Upsert , .set , so no need
+
+      //() => UpdateNoteUsecase(noteRepository: Get.find<NoteRepository>()),
+    ); */
     Get.lazyPut(
       () => DeleteNoteUsecase(noteRepository: Get.find<NoteRepository>()),
     );
@@ -58,7 +73,9 @@ class NoteBinding extends Bindings {
       () => NoteController(
         addNoteUsecase: Get.find<AddNoteUsecase>(),
         getNotesUsecase: Get.find<GetNotesUsecase>(),
-        updateNoteUsecase: Get.find<UpdateNoteUsecase>(),
+        //not needed for RDS FireStore bcz Upsert .set
+
+        //updateNoteUsecase: Get.find<UpdateNoteUsecase>(),
         deleteNoteUsecase: Get.find<DeleteNoteUsecase>(),
         toggleImportantUsecase: Get.find<ToggleImportantUsecase>(),
       ),
