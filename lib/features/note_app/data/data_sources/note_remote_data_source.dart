@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 abstract class NoteRemoteDataSource {
@@ -68,12 +69,18 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
     try {
       debugPrint("NoteRDS>getAllNotes>Started======");
 
+      //fetch curren user Auth ID (fetch only that list of notes where authId matches)
+      final String currentUserAuthId = FirebaseAuth.instance.currentUser!.uid;
+
       //notesCollRef will give -->colln obj(query snapshot)
       //give list of QDocSnp>each QDS contain map<>
       //so -->map<> directly
       //.sort --> sort by this key (String[Alpha],int [Numerically],dateTime.now()[Timestamp])
       final QuerySnapshot<Map<String, dynamic>> querySnapShot =
-          await _notescollection.orderBy('createdAt', descending: true).get();
+          await _notescollection
+              .where('userId', isEqualTo: currentUserAuthId)
+              .orderBy('createdAt', descending: true)
+              .get();
 
       //QS > List QDSnp : map -- each QDsn  -- raw map --.tolist
 

@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
@@ -27,7 +29,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
   //remove 'final' because if this starts as 'null',
   //due to (constantly listen and save business logic)
   // it will transform into a real note the second the user types a letter!
-  NoteEntity? _currentNote = Get.arguments as NoteModel?;
+  NoteEntity? _currentNote = Get.arguments as NoteEntity?;
   final NoteController _noteController = Get.find<NoteController>();
   //Birth
   @override
@@ -73,11 +75,12 @@ class _EditditNoteViewState extends State<EditditNoteView> {
 
     //Soc .Actions A.If new note,ADD(create) else B.Update
     if (_currentNote == null) {
+      final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
       _currentNote = NoteModel(
         //first time , brand new note ->id,uid temporary empty ''
-        //NoteRDS firestore will asign id 
+        //NoteRDS firestore will asign id
         id: '',
-        userId: '',
+        userId: userAuthId,
         title: currentTitle,
         content: currentContent,
         createdAt: DateTime.now(),
