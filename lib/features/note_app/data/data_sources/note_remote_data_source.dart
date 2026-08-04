@@ -59,8 +59,9 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
       //notesCollRef will give -->colln obj(query snapshot)
       //give list of QDocSnp>each QDS contain map<>
       //so -->map<> directly
+      //.sort --> sort by this key (String[Alpha],int [Numerically],dateTime.now()[Timestamp])
       final QuerySnapshot<Map<String, dynamic>> querySnapShot =
-          await _notescollection.get();
+          await _notescollection.orderBy('createdAt', descending: true).get();
 
       //QS > List QDSnp : map -- each QDsn  -- raw map --.tolist
 
