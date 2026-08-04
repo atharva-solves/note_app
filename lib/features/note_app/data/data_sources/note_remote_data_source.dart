@@ -25,8 +25,20 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
     try {
       debugPrint('=== Note RDS >createNote Started ====');
 
-      //extract uuid from Map (we are not using FB's randomly generated)
-      final String noteId = rawNote['id'] as String;
+      //extract id from Map
+      String noteId = rawNote['id'] as String;
+
+      //since fireStore provides id gen functionality
+      //no need of extra uuid package now
+      if (noteId.trim().isEmpty) {
+        //if its brand new note , empt ids
+        //gen
+        //save noteId in var
+        noteId = _notescollection.doc().id;
+
+        //inject the fs generated id (for note ID) in Raw note
+        rawNote['id'] = noteId;
+      }
 
       // #Upsert behavior
       //check whether rawNote doc with that specific uuid

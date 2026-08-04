@@ -6,7 +6,9 @@ import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
-import 'package:uuid/uuid.dart';
+//firestore has functionality to generate ID (we'll use for note ID)
+//no need of extra package
+//import 'package:uuid/uuid.dart';
 
 //stf :bcz using a UI widget(Txt F.) that req its mem manag (own life cycle)(init disp ctr)
 class EditditNoteView extends StatefulWidget {
@@ -72,7 +74,10 @@ class _EditditNoteViewState extends State<EditditNoteView> {
     //Soc .Actions A.If new note,ADD(create) else B.Update
     if (_currentNote == null) {
       _currentNote = NoteModel(
-        id: const Uuid().v4(),
+        //first time , brand new note ->id,uid temporary empty ''
+        //NoteRDS firestore will asign id 
+        id: '',
+        userId: '',
         title: currentTitle,
         content: currentContent,
         createdAt: DateTime.now(),

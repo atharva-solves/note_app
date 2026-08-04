@@ -3,6 +3,7 @@ import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 class NoteModel extends NoteEntity {
   NoteModel({
     required super.id,
+    required super.userId,
     required super.title,
     required super.content,
     required super.createdAt,
@@ -13,6 +14,7 @@ class NoteModel extends NoteEntity {
   factory NoteModel.fromJson(Map<String, dynamic> json) {
     return NoteModel(
       id: json['id'] as String,
+      userId: json['userId'] as String,
       title: json['title'] as String,
       content: json['content'] as String,
       // JSON doesn't understand DateTime, so we parse the String back into a DateTime object
@@ -25,6 +27,7 @@ class NoteModel extends NoteEntity {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'title': title,
       'content': content,
       // Convert the DateTime object into a JSON-friendly String
@@ -38,6 +41,7 @@ class NoteModel extends NoteEntity {
   factory NoteModel.fromEntity(NoteEntity entity) {
     return NoteModel(
       id: entity.id,
+      userId: entity.userId,
       title: entity.title,
       content: entity.content,
       createdAt: entity.createdAt,

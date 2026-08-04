@@ -2,6 +2,7 @@
 
 class NoteEntity {
   final String id;
+  final String userId;
   final String title;
   final String content;
   final DateTime createdAt;
@@ -13,9 +14,11 @@ class NoteEntity {
     required this.content,
     required this.createdAt,
     required this.isImportant,
+    required this.userId
   });
   NoteEntity copyWith({
     String? id,
+    String? userId,
     String? title,
     String? content,
     DateTime? createdAt,
@@ -24,6 +27,7 @@ class NoteEntity {
     return NoteEntity(
       // If a new value is provided, use it. Otherwise, fall back to 'this' value.
       id: id ?? this.id,
+      userId: userId??this.userId,
       title: title ?? this.title,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
