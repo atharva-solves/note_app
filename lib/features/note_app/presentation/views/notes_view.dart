@@ -36,14 +36,21 @@ class NotesView extends GetView<NoteController> {
               Get.find<AuthController>().deleteAccount();
             },
           ),
-          
+
           // MODIFIED: Sign Out Button (Black to match minimal theme)
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
             tooltip: 'Sign Out',
             onPressed: () {
               debugPrint('[UI] Triggering Sign Out from NotesView');
-              Get.find<AuthController>().signOut();
+
+              //fireStore Offlline feature doesn't uses auth's signout
+              //Get.find<AuthController>().signOut;
+
+              //noteCtr signOut>checks if offline(Local cached notes saved or not)
+              //sighnout if reonnected(saved safely)
+              //dialogue to warn user regarding discard bcz offline
+              controller.noteViewSignOut();
             },
           ),
           const SizedBox(width: 8), // Slight right-padding for a polished look

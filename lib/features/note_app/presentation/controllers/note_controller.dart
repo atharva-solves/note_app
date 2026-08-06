@@ -1,11 +1,18 @@
-import 'package:flutter/foundation.dart';
+//for timeOut 
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
 import 'package:get/get.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/clearNotesLocalCache.dart';
+import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/waitForNotesWrite.dart';
 import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/toggle_important_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/update_note_usecase.dart';
+import 'package:note_app/features/note_app/presentation/widgets/unsaved_changes_dialog.dart';
 
 class NoteController extends GetxController {
   //1.fin _ fields (UCs)
@@ -21,13 +28,25 @@ class NoteController extends GetxController {
   final DeleteNoteUsecase _deleteNoteUsecase;
   final ToggleImportantUsecase _toggleImportantUsecase;
 
+  //Integrating FireStor Offline Feature
+  //warn user before signOut (FS offline limitation : discard edits on auth current user change)
+  final WaitfornoteswriteUsecase _waitfornoteswriteUsecase;
+  final ClearnoteslocalcacheUseCase _clearnoteslocalcacheUseCase;
+  final SignOutUsecase _signOutUsecase;
+
   NoteController({
     required AddNoteUsecase addNoteUsecase,
     required GetNotesUsecase getNotesUsecase,
     //required UpdateNoteUsecase updateNoteUsecase,
     required DeleteNoteUsecase deleteNoteUsecase,
     required ToggleImportantUsecase toggleImportantUsecase,
-  }) : _addNoteUsecase = addNoteUsecase,
+    required WaitfornoteswriteUsecase waitfornoteswriteUsecase,
+    required ClearnoteslocalcacheUseCase clearnoteslocalcacheUseCase,
+    required SignOutUsecase signOutUsecase,
+  }) : _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
+       _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
+       _signOutUsecase = signOutUsecase,
+       _addNoteUsecase = addNoteUsecase,
        _getNotesUsecase = getNotesUsecase,
        // _updateNoteUsecase = updateNoteUsecase,
        _deleteNoteUsecase = deleteNoteUsecase,
@@ -53,7 +72,18 @@ class NoteController extends GetxController {
         'noteCtrl -> onReady -> note title os latest note is is -> ${noteList[0].title}',
       );
     }
-    Future.delayed(Duration(milliseconds: 100), () => loadNotes());
+
+    //now the getNotes usecase is a Stream , so no need to every time manually call loadNotes
+    //just attach RxList var to getNotesUC onReady.
+
+    noteList.bindStream(_getNotesUsecase());
+
+    //attached stream to RxList
+    //no need to manually loadnotes
+    //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
+
+    //fireStore Stream (.snapShot Tootks time)
+    //Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
 
   //mocking NoteView
@@ -95,10 +125,66 @@ class NoteController extends GetxController {
     });
   } */
 
+  //UI SignOut Action:
+  Future<void> noteViewSignOut() async {
+    try {
+      //start Loading spinner
+      //dialog -> like nav to new screen
+      //if want to close -> get Back to previous screen
+      Get.dialog(
+        Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      //we already tapped save Note button in edit Note view
+      //fireStore constantly waiting for connection and trying to push notes
+      //save in RDB as soon as reconnect
+      await _waitfornoteswriteUsecase();
+
+      //we waited-->if notes Pushed ,online ,
+      //#_clearlocal Persistance , #_signout ,#(get back)close Loading Spinner
+      await _clearnoteslocalcacheUseCase();
+      await _signOutUsecase();
+
+      //if more that 3 sec--> timeOut Exception
+    } on TimeoutException {
+      debugPrint("NoteController > signOut : TIMEOUT (User is offline)");
+      Get.back(); // Close loading indicator
+
+      // Show warning dialog
+      _showUnsavedOfflineWarnDialog();
+    } catch (e) {
+      debugPrint("NoteController > signOut : ERROR ==> $e");
+      Get.back();
+      errorMessage.value = e.toString();
+    }
+  }
+
+  //warning
+  //on TimeOut-> user is offline and trying to signout without edit save
+  void _showUnsavedOfflineWarnDialog() {
+    Get.dialog(const UnsavedChangesDialog());
+  }
+
+  //since custom widget made to get rid of UI in Ctrl (Clean Arch)
+  //there it will call force signout method on force signout button
+  Future<void> forceSignOut() async {
+    try {
+      isLoading.value = true;
+      await _clearnoteslocalcacheUseCase();
+      await _signOutUsecase();
+    } catch (e) {
+      debugPrint("NoteController > forceSignOut : ERROR ==> $e");
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   //UI Action 1:Read
 
   /////--------------RDS (FireStore)----------
-  Future<void> loadNotes() async {
+  /*  Future<void> loadNotes() async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
@@ -110,7 +196,7 @@ class NoteController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+  } */
 
   //----------------LDS Get Storage----------
   /* void loadNotes() {
@@ -137,7 +223,11 @@ class NoteController extends GetxController {
       //just direct() bcz of call in UC ---FOR RDS FireStore
       await _addNoteUsecase(note);
       debugPrint('noteCtrl -> addNote -> note title is -> ${note.title}');
-      loadNotes();
+
+      //attached stream to RxList
+      //no need to manually loadnotes
+      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
+      //loadNotes();
     } catch (e) {
       debugPrint("note_app>pres>controller>addNotes : ERROR ==> $e");
       errorMessage.value = e.toString();
@@ -172,7 +262,11 @@ class NoteController extends GetxController {
       //Direct () .No need of exec bcz call in UC
       //RDS FireStore
       await _deleteNoteUsecase(noteId);
-      loadNotes();
+
+      //attached stream to RxList
+      //no need to manually loadnotes
+      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
+      //loadNotes();
     } catch (e) {
       debugPrint("note_app>pres>controller>deleteNotes : ERROR ==> $e");
       errorMessage.value = e.toString();
@@ -191,7 +285,11 @@ class NoteController extends GetxController {
       //Need to pass Entity for RDS FireStore
       await _toggleImportantUsecase(noteEntity: noteEntity);
       //await _toggleImportantUsecase.execute(noteId);
-      loadNotes();
+
+      //attached stream to RxList
+      //no need to manually loadnotes
+      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
+      //loadNotes();
     } catch (e) {
       debugPrint("note_app>pres>controller>toggleImportant : ERROR ==> $e");
       errorMessage.value = e.toString();

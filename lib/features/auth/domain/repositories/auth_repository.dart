@@ -13,7 +13,10 @@ abstract class AuthRepository {
 
   Future<UserEntity> signInWithGoogle();
 
+  
+
   Future<void> signOut();
+
   Future<void> deleteAccount();
 
   Stream<UserEntity?> get authStatusStream;

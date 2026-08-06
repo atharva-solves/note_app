@@ -12,12 +12,15 @@ class NoteRepositoryImpl implements NoteRepository {
     : _noteRemoteDataSource = noteRDS;
 
   @override
-  Future<List<NoteEntity>> getAllNotes() async {
-    List<Map<String, dynamic>> rawList = await _noteRemoteDataSource
+  Stream<List<NoteEntity>> getAllNotes()  {
+    Stream<List<Map<String, dynamic>>> rawList =  _noteRemoteDataSource
         .getAllNotes();
-    List<NoteEntity> noteEntities = rawList
-        .map((rawJson) => NoteModel.fromJson(rawJson))
-        .toList();
+    Stream<List<NoteEntity>> noteEntities = rawList
+        .map((listRawJson) {
+         final List<NoteEntity>  noteEntityList= listRawJson.map((json)=>NoteModel.fromJson(json)).toList();
+         return noteEntityList;
+        });
+        
     return noteEntities;
   }
 
@@ -31,6 +34,22 @@ class NoteRepositoryImpl implements NoteRepository {
   @override
   Future<void> deleteNote(String noteId) async {
     await _noteRemoteDataSource.deleteNote(noteId);
+  }
+
+  @override
+  Future<void> waitForNoteWrites() async {
+    //since we clicked save button->FS trying to save notes ->if offline , cached .
+    //after cache still wait for internet->we wait for pending writes , if more than 3 seconds
+    //.timeOut Throws TimeOut error
+    await _noteRemoteDataSource.waitForNoteWrites().timeout(
+      Duration(seconds: 3),
+    );
+  }
+
+  //clear in ctr signOut after successfully notes pushed/saved online
+  @override
+  Future<void> clearLocalNoteCache() async {
+    await _noteRemoteDataSource.clearLocalNoteCache();
   }
 
   //--------Note LDS (Get Storage)---------------------

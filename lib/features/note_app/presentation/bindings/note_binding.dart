@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:note_app/core/services/local_storage_service.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
+import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/note_app/data/data_sources/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/clearNotesLocalCache.dart';
+import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/waitForNotesWrite.dart';
 import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/toggle_important_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/update_note_usecase.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
 
 //why?
@@ -67,6 +67,12 @@ class NoteBinding extends Bindings {
     Get.lazyPut(
       () => ToggleImportantUsecase(noteRepository: Get.find<NoteRepository>()),
     );
+Get.lazyPut(
+      () => WaitfornoteswriteUsecase(noteRepository: Get.find<NoteRepository>()),
+    );
+    Get.lazyPut(
+      () => ClearnoteslocalcacheUseCase(noteRepository: Get.find<NoteRepository>()),
+    );
 
     //[4]Ctr (brin of UI,UI action trigger 5 usecases,actions)
     Get.lazyPut(
@@ -78,6 +84,9 @@ class NoteBinding extends Bindings {
         //updateNoteUsecase: Get.find<UpdateNoteUsecase>(),
         deleteNoteUsecase: Get.find<DeleteNoteUsecase>(),
         toggleImportantUsecase: Get.find<ToggleImportantUsecase>(),
+        waitfornoteswriteUsecase:Get.find<WaitfornoteswriteUsecase>(),
+        clearnoteslocalcacheUseCase:Get.find<ClearnoteslocalcacheUseCase>(),
+        signOutUsecase:Get.find<SignOutUsecase>(),
       ),
     );
   }

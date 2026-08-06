@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -17,6 +18,20 @@ void main() async {
   await Firebase.initializeApp();
 
   await GoogleSignIn.instance.initialize();
+
+
+//3 limitations:
+  //1) atleast one online fetch is req.(firstTime login & offline ->see nothing bcz no fetch before)
+  //2)sec rules apply edit discard :user1
+
+  FirebaseFirestore.instance.settings = Settings(
+    persistenceEnabled: true,
+
+    //optional
+    //byDeafault 40mb
+    //if exceeds limit, fireStroe delete older data(notes)
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
 
   runApp(const MyApp());
 }

@@ -17,7 +17,7 @@ class GetNotesUsecase {
 
 
 //------------ Note Remote D S (FireStore) ------------
-  Future<List<NoteEntity>> call() async {
-    return await _noteRepository.getAllNotes();
+  Stream<List<NoteEntity>> call()  {
+    return  _noteRepository.getAllNotes();
   }
 }
