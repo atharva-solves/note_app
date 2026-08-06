@@ -9,10 +9,11 @@ class VerifyOtpUsecase {
   Future<UserEntity> call({
     required String verificationId,
     required String smsCode,
+    required String verifiedPhone
   }) {
     return _authRepository.verifyOtp(
       verificationId: verificationId,
-      smsCode: smsCode,
+      smsCode: smsCode, phone: verifiedPhone,
     );
   }
 }

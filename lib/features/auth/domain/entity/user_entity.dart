@@ -9,5 +9,7 @@ class UserEntity {
   //helps to keep One unified Entity rather than seperate for each sub-feature
   final String? email; 
 
-  UserEntity({required this.id, required this.email});
+  final String? phoneNumber;
+
+  UserEntity({required this.id, required this.email, this.phoneNumber});
 }

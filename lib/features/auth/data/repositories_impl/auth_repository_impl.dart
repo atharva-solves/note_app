@@ -72,10 +72,12 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<UserEntity> verifyOtp({
     required String verificationId,
     required String smsCode,
+    required String phone,
   }) async {
     final UserEntity userEntity = await _authRemoteDatasource.verifyOtp(
       verificationId: verificationId,
       smsCode: smsCode,
+      phoneNumber: phone,
     );
     return userEntity;
   }

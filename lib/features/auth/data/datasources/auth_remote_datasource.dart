@@ -19,6 +19,7 @@ abstract class AuthRemoteDatasource {
   Future<UserModel> verifyOtp({
     required String verificationId,
     required String smsCode,
+    required String phoneNumber
   });
 
   Future<UserModel> signInAnonymously();
@@ -218,6 +219,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
   Future<UserModel> verifyOtp({
     required String verificationId,
     required String smsCode,
+    required String phoneNumber,
   }) async {
     try {
       //wrap with this wrapper
@@ -235,6 +237,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
 
       final UserModel userModel = UserModel.fromFireBaseUser(
         firebaseUser: userCredential.user!,
+        verifiedPhone: phoneNumber,
       );
 
       return userModel;

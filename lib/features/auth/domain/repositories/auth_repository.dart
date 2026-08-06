@@ -33,6 +33,7 @@ abstract class AuthRepository {
   Future<UserEntity> verifyOtp({
     required String verificationId,
     required String smsCode, //otp
+    required String phone
   }); 
 
   Future<UserEntity> signInAnonymously();

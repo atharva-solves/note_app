@@ -6,6 +6,7 @@ class OtpView extends GetView<AuthController> {
   OtpView({super.key});
 
   final TextEditingController _otpController = TextEditingController();
+  final String phoneNumber=Get.arguments as String;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +99,7 @@ class OtpView extends GetView<AuthController> {
                           final String code = _otpController.text.trim();
                           if (code.length == 6) {
                             debugPrint("[UI] Confirming OTP verification");
-                            controller.verifyOtp(code);
+                            controller.verifyOtp(smsCode: code,phone: phoneNumber);
                           } else {
                             Get.snackbar(
                               "Invalid OTP",
