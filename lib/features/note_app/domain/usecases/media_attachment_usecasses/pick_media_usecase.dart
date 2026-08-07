@@ -1,4 +1,4 @@
-import 'package:note_app/features/note_app/domain/enums/media_enums.dart';
+import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
 import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
 
 class PickMediaUsecase {
