@@ -11,7 +11,7 @@ class NoteEntity {
   final bool isImportant;
 
   //solution : Nested Entities , Many to one relationship.
-  final List<MediaAttachmentNestedEntity> mediaAttacments;
+  final List<MediaAttachmentNestedEntity> mediaAttachments;
 
   //CHANGED PLAN to support multiple media and type per Note
   /* //to store cloud storage web link of img/vid
@@ -27,7 +27,7 @@ class NoteEntity {
     required this.createdAt,
     required this.isImportant,
     required this.userId,
-    this.mediaAttacments = const [],
+    this.mediaAttachments = const [],
   });
   NoteEntity copyWith({
     String? id,
@@ -46,7 +46,7 @@ class NoteEntity {
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       isImportant: isImportant ?? this.isImportant,
-      mediaAttacments: mediaAttacments,
+      mediaAttachments: mediaAttachments ?? this.mediaAttachments ,
     );
   }
 }
