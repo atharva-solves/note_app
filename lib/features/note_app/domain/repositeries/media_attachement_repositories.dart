@@ -1,7 +1,7 @@
 import 'package:note_app/features/note_app/domain/enums/media_enums.dart';
 
-abstract class MediaAttachementRepositories {
-  Future<String?> pickMedia({
+abstract class MediaAttachementRepository {
+  Future<List<String>> pickMedia({
     required NoteMediaSource source,
     required NoteMediaType type,
   });
