@@ -71,7 +71,7 @@ Get.lazyPut(
       () => WaitfornoteswriteUsecase(noteRepository: Get.find<NoteRepository>()),
     );
     Get.lazyPut(
-      () => ClearnoteslocalcacheUseCase(noteRepository: Get.find<NoteRepository>()),
+      () => ClearNotesLocalCacheUseCase(noteRepository: Get.find<NoteRepository>()),
     );
 
     //[4]Ctr (brin of UI,UI action trigger 5 usecases,actions)
@@ -85,7 +85,7 @@ Get.lazyPut(
         deleteNoteUsecase: Get.find<DeleteNoteUsecase>(),
         toggleImportantUsecase: Get.find<ToggleImportantUsecase>(),
         waitfornoteswriteUsecase:Get.find<WaitfornoteswriteUsecase>(),
-        clearnoteslocalcacheUseCase:Get.find<ClearnoteslocalcacheUseCase>(),
+        clearnoteslocalcacheUseCase:Get.find<ClearNotesLocalCacheUseCase>(),
         signOutUsecase:Get.find<SignOutUsecase>(),
       ),
     );

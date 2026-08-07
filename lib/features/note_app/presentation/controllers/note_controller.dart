@@ -31,7 +31,7 @@ class NoteController extends GetxController {
   //Integrating FireStor Offline Feature
   //warn user before signOut (FS offline limitation : discard edits on auth current user change)
   final WaitfornoteswriteUsecase _waitfornoteswriteUsecase;
-  final ClearnoteslocalcacheUseCase _clearnoteslocalcacheUseCase;
+  final ClearNotesLocalCacheUseCase _clearnoteslocalcacheUseCase;
   final SignOutUsecase _signOutUsecase;
 
   NoteController({
@@ -41,7 +41,7 @@ class NoteController extends GetxController {
     required DeleteNoteUsecase deleteNoteUsecase,
     required ToggleImportantUsecase toggleImportantUsecase,
     required WaitfornoteswriteUsecase waitfornoteswriteUsecase,
-    required ClearnoteslocalcacheUseCase clearnoteslocalcacheUseCase,
+    required ClearNotesLocalCacheUseCase clearnoteslocalcacheUseCase,
     required SignOutUsecase signOutUsecase,
   }) : _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
        _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
