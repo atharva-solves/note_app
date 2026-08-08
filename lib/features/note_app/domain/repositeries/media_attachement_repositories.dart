@@ -10,4 +10,9 @@ abstract class MediaAttachementRepository {
     required String mediaLocalPath,
     required String userAuthId,
   });
+
+  Future<List<String>> uploadMultipleMedia({
+    required List<String> mediaLocalPaths,
+    required String userAuthId,
+  });
 }

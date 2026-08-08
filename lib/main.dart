@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:note_app/core/bindings/initial_binding.dart';
 import 'package:note_app/core/routes/app_pages.dart';
 import 'package:note_app/core/routes/app_routes.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   //since await before runApp,WFB.eI() ==> connect flutter framework(Dart code-wid ,ctr..)and Flutter Engine(C++: draws actual the pixel)
@@ -19,8 +20,7 @@ void main() async {
 
   await GoogleSignIn.instance.initialize();
 
-
-//3 limitations:
+  //3 limitations:
   //1) atleast one online fetch is req.(firstTime login & offline ->see nothing bcz no fetch before)
   //2)sec rules apply edit discard :user1
 
@@ -31,6 +31,12 @@ void main() async {
     //byDeafault 40mb
     //if exceeds limit, fireStroe delete older data(notes)
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
+  await Supabase.initialize(
+    url: "https://tryfzkjzywvgjiuopdpw.supabase.co/rest/v1/",
+    publishableKey:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeWZ6a2p6eXd2Z2ppdW9wZHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNjA2ODQsImV4cCI6MjEwMTczNjY4NH0.4BpbG1wYhlzbK9St1DllDwRqNL-dr2T6n0wuMzSHGPQ",
   );
 
   runApp(const MyApp());

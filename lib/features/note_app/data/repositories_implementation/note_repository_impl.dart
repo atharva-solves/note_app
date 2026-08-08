@@ -1,5 +1,5 @@
-import 'package:note_app/features/note_app/data/data_sources/note_local_data_source.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_data_source.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_local_data_sources/note_local_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
@@ -12,15 +12,16 @@ class NoteRepositoryImpl implements NoteRepository {
     : _noteRemoteDataSource = noteRDS;
 
   @override
-  Stream<List<NoteEntity>> getAllNotes()  {
-    Stream<List<Map<String, dynamic>>> rawList =  _noteRemoteDataSource
+  Stream<List<NoteEntity>> getAllNotes() {
+    Stream<List<Map<String, dynamic>>> rawList = _noteRemoteDataSource
         .getAllNotes();
-    Stream<List<NoteEntity>> noteEntities = rawList
-        .map((listRawJson) {
-         final List<NoteEntity>  noteEntityList= listRawJson.map((json)=>NoteModel.fromJson(json)).toList();
-         return noteEntityList;
-        });
-        
+    Stream<List<NoteEntity>> noteEntities = rawList.map((listRawJson) {
+      final List<NoteEntity> noteEntityList = listRawJson
+          .map((json) => NoteModel.fromJson(json))
+          .toList();
+      return noteEntityList;
+    });
+
     return noteEntities;
   }
 
@@ -38,12 +39,13 @@ class NoteRepositoryImpl implements NoteRepository {
 
   @override
   Future<void> waitForNoteWrites() async {
+
+    //in NoteRDS:
     //since we clicked save button->FS trying to save notes ->if offline , cached .
     //after cache still wait for internet->we wait for pending writes , if more than 3 seconds
     //.timeOut Throws TimeOut error
-    await _noteRemoteDataSource.waitForNoteWrites().timeout(
-      Duration(seconds: 3),
-    );
+    
+    await _noteRemoteDataSource.waitForNoteWrites();
   }
 
   //clear in ctr signOut after successfully notes pushed/saved online

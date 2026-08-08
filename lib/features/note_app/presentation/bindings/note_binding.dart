@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_data_source.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
