@@ -1,3 +1,3 @@
 enum NoteMediaSource { camera, gallery }
 
-enum NoteMediaType { image, video }
+enum NoteMediaType { image, video ,any}
