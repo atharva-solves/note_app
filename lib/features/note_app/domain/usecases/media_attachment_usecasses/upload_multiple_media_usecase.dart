@@ -2,8 +2,8 @@ import 'package:note_app/features/note_app/domain/repositeries/media_attachement
 
 class UploadMultipleMediaUsecase {
   final MediaAttachementRepository _mediaAttachementRepository;
-  UploadMultipleMediaUsecase({required MediaAttachementRepository mediaRepo})
-    : _mediaAttachementRepository = mediaRepo;
+  UploadMultipleMediaUsecase({required MediaAttachementRepository mediaAttachRepo})
+    : _mediaAttachementRepository = mediaAttachRepo;
 
   Future<List<String>> call({
     required List<String> mediaLocalPaths,

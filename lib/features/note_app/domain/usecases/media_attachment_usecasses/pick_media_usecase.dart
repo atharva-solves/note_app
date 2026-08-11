@@ -3,8 +3,8 @@ import 'package:note_app/features/note_app/domain/repositeries/media_attachement
 
 class PickMediaUsecase {
   final MediaAttachementRepository _mediaAttachementRepository;
-  PickMediaUsecase({required MediaAttachementRepository attacmentRepo})
-    : _mediaAttachementRepository = attacmentRepo;
+  PickMediaUsecase({required MediaAttachementRepository mediaAttachRepo})
+    : _mediaAttachementRepository = mediaAttachRepo;
 
   Future<List<String>> call({
     required NoteMediaSource source,

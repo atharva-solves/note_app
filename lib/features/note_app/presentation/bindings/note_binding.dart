@@ -1,6 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:note_app/features/note_app/data/repositories_implementation/media_attachment_repository_impl.dart';
+import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/delete_media_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/pick_media_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_media_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_multiple_media_usecase.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_local_data_sources/media_local_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/media_remote_datasource.dart';
 import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
@@ -31,6 +41,12 @@ class NoteBinding extends Bindings {
         firebasefireStore: FirebaseFirestore.instance,
       ),
     );
+    Get.lazyPut<MediaLocalDatasource>(
+      () => MediaLocalDatasourceImpl(imagePicker: ImagePicker()),
+    );
+    Get.lazyPut<MediaRemoteDatasource>(
+      () => MediaRemoteDatasourceImpl(supabaseClient: Supabase.instance.client),
+    );
     //LDS Get storage
     /*  Get.lazyPut(
       () => NoteLocalDataSource(storageService: Get.find<StorageService>()),
@@ -42,6 +58,13 @@ class NoteBinding extends Bindings {
     //RDS FireStore
     Get.lazyPut<NoteRepository>(
       () => NoteRepositoryImpl(noteRDS: Get.find<NoteRemoteDataSource>()),
+    );
+
+    Get.lazyPut<MediaAttachementRepository>(
+      () => MediaAttachmentRepositoryImpl(
+        mediaLocalDatasource: Get.find<MediaLocalDatasource>(),
+        mediaRemoteDatasource: Get.find<MediaRemoteDatasource>(),
+      ),
     );
     /*  Get.lazyPut<NoteRepository>(
       () => NoteRepositoryImpl(
@@ -67,13 +90,39 @@ class NoteBinding extends Bindings {
     Get.lazyPut(
       () => ToggleImportantUsecase(noteRepository: Get.find<NoteRepository>()),
     );
-Get.lazyPut(
-      () => WaitfornoteswriteUsecase(noteRepository: Get.find<NoteRepository>()),
+    Get.lazyPut(
+      () =>
+          WaitfornoteswriteUsecase(noteRepository: Get.find<NoteRepository>()),
     );
     Get.lazyPut(
-      () => ClearNotesLocalCacheUseCase(noteRepository: Get.find<NoteRepository>()),
+      () => ClearNotesLocalCacheUseCase(
+        noteRepository: Get.find<NoteRepository>(),
+      ),
     );
 
+    Get.lazyPut(
+      () => PickMediaUsecase(
+        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
+      ),
+    );
+
+    Get.lazyPut(
+      () => UploadMediaUsecase(
+        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
+      ),
+    );
+
+    Get.lazyPut(
+      () => UploadMultipleMediaUsecase(
+        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
+      ),
+    );
+
+    Get.lazyPut(
+      () => DeleteMediaUsecase(
+        mediaAttachementRepository: Get.find<MediaAttachementRepository>(),
+      ),
+    );
     //[4]Ctr (brin of UI,UI action trigger 5 usecases,actions)
     Get.lazyPut(
       () => NoteController(
@@ -84,9 +133,12 @@ Get.lazyPut(
         //updateNoteUsecase: Get.find<UpdateNoteUsecase>(),
         deleteNoteUsecase: Get.find<DeleteNoteUsecase>(),
         toggleImportantUsecase: Get.find<ToggleImportantUsecase>(),
-        waitfornoteswriteUsecase:Get.find<WaitfornoteswriteUsecase>(),
-        clearnoteslocalcacheUseCase:Get.find<ClearNotesLocalCacheUseCase>(),
-        signOutUsecase:Get.find<SignOutUsecase>(),
+        waitfornoteswriteUsecase: Get.find<WaitfornoteswriteUsecase>(),
+        clearnoteslocalcacheUseCase: Get.find<ClearNotesLocalCacheUseCase>(),
+        signOutUsecase: Get.find<SignOutUsecase>(),
+        pickMediaUsecase: Get.find<PickMediaUsecase>(),
+        uploadMultipleMediaUsecase: Get.find<UploadMultipleMediaUsecase>(),
+        deleteMediaUsecase: Get.find<DeleteMediaUsecase>(),
       ),
     );
   }

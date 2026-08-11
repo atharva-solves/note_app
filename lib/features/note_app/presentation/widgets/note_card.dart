@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
@@ -19,6 +20,12 @@ class NoteCardWidget extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // Clicking an existing note passes that specific note to the editor
+        final NoteController noteController = Get.find<NoteController>();
+        
+        noteController.setupNoteForEditing(note: note);
+        debugPrint(
+          '<><><><><><>note is tapped in NoteView , nav to editNoteView with media ${note.mediaAttachments.length} attachments <><><><><><><>>',
+        );
         Get.toNamed(AppRoutes.editNote, arguments: note);
       },
       child: Container(
@@ -73,7 +80,9 @@ class NoteCardWidget extends StatelessWidget {
                 ),
                 // Delete Button
                 GestureDetector(
-                  onTap: () => controller.deleteNote(note.id),
+                  onTap: () {
+                    controller.deleteNote(note.id);
+                  },
                   child: Icon(
                     Icons.delete_outline_rounded,
                     color: Colors.grey.shade400,

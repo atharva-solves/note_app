@@ -15,4 +15,6 @@ abstract class MediaAttachementRepository {
     required List<String> mediaLocalPaths,
     required String userAuthId,
   });
+
+  Future<void> deleteMedia({required List<String> publicUrls});
 }

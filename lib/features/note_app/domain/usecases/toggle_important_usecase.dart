@@ -27,6 +27,6 @@ class ToggleImportantUsecase {
       isImportant: !noteEntity.isImportant,
     );
 
-    await _noteRepository.saveNotes(toggledNoteEntity);
+    await _noteRepository.saveNote(toggledNoteEntity);
   }
 }

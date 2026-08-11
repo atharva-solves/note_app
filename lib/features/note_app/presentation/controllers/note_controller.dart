@@ -1,16 +1,21 @@
-//for timeOut 
+//for timeOut
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
+import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
+import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/clearNotesLocalCache.dart';
 import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/waitForNotesWrite.dart';
 import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/delete_media_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/pick_media_usecase.dart';
+import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_multiple_media_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/toggle_important_usecase.dart';
 import 'package:note_app/features/note_app/presentation/widgets/unsaved_changes_dialog.dart';
 
@@ -21,7 +26,7 @@ class NoteController extends GetxController {
   //4.onInit to load
   //5. meths (UCs) (Actn -> Exec -> reload)
 
-  final AddNoteUsecase _addNoteUsecase;
+  final AddNoteUsecase _saveNoteUsecase;
   final GetNotesUsecase _getNotesUsecase;
   //since upsert in firestore, there fore no use in RDS
   //final UpdateNoteUsecase _updateNoteUsecase;
@@ -34,6 +39,13 @@ class NoteController extends GetxController {
   final ClearNotesLocalCacheUseCase _clearnoteslocalcacheUseCase;
   final SignOutUsecase _signOutUsecase;
 
+  //meadia attacment sub feat
+
+  //action :1.creat and Read
+  final PickMediaUsecase _pickMediaUsecase;
+  final UploadMultipleMediaUsecase _uploadMultipleMediaUsecase;
+  final DeleteMediaUsecase _deleteMediaUsecase;
+
   NoteController({
     required AddNoteUsecase addNoteUsecase,
     required GetNotesUsecase getNotesUsecase,
@@ -43,10 +55,16 @@ class NoteController extends GetxController {
     required WaitfornoteswriteUsecase waitfornoteswriteUsecase,
     required ClearNotesLocalCacheUseCase clearnoteslocalcacheUseCase,
     required SignOutUsecase signOutUsecase,
-  }) : _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
+    required PickMediaUsecase pickMediaUsecase,
+    required UploadMultipleMediaUsecase uploadMultipleMediaUsecase,
+    required DeleteMediaUsecase deleteMediaUsecase,
+  }) : _deleteMediaUsecase = deleteMediaUsecase,
+       _pickMediaUsecase = pickMediaUsecase,
+       _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
+       _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
        _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
        _signOutUsecase = signOutUsecase,
-       _addNoteUsecase = addNoteUsecase,
+       _saveNoteUsecase = addNoteUsecase,
        _getNotesUsecase = getNotesUsecase,
        // _updateNoteUsecase = updateNoteUsecase,
        _deleteNoteUsecase = deleteNoteUsecase,
@@ -55,6 +73,17 @@ class NoteController extends GetxController {
   RxList<NoteEntity> noteList = <NoteEntity>[].obs;
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
+  //#media attachment subfeature
+  //first save local Media paths for USER PREVIEW
+  RxList<String> selectedLocalMediaPaths = <String>[].obs;
+
+  //store previously uploaded cloud media
+  //to implement unified(prev+local pick) attachment list
+  //~~1.1
+  RxList<MediaAttachmentNestedEntity> currentCloudMedia =
+      <MediaAttachmentNestedEntity>[].obs;
+
+  List<String> cloudPathsToDelete = [];
 
   //solved ghost Ref bug
   //remove loadNotes() from onInit
@@ -70,6 +99,9 @@ class NoteController extends GetxController {
     if (noteList.isNotEmpty) {
       debugPrint(
         'noteCtrl -> onReady -> note title os latest note is is -> ${noteList[0].title}',
+      );
+      debugPrint(
+        '<><><><><><>onReady of NoteCtr,now contains ${currentCloudMedia.length} previous media  attachments <><><><><><><>>',
       );
     }
 
@@ -124,6 +156,25 @@ class NoteController extends GetxController {
       // loadNotes();
     });
   } */
+
+  //~~1.2 call this before nav to Edit note
+  //~~ clear the previous state
+  void setupNoteForEditing({NoteEntity? note}) {
+    selectedLocalMediaPaths.clear();
+
+    if (note != null && note.mediaAttachments.isNotEmpty) {
+      //checking wether previous media attachments are inserted
+      debugPrint('Setting upNote for Edit View');
+      debugPrint('its an existing note with Attachments not Empty');
+      debugPrint('assigning media att of this tapped note to currCloudMedia');
+      debugPrint(
+        '<><><><> existing note has ${note.mediaAttachments.length} attachments',
+      );
+      currentCloudMedia.assignAll(note.mediaAttachments);
+    } else {
+      currentCloudMedia.clear();
+    }
+  }
 
   //UI SignOut Action:
   Future<void> noteViewSignOut() async {
@@ -215,14 +266,66 @@ class NoteController extends GetxController {
   //----------------Load Notes From Getstorage ENDS---------------
 
   //UI Action 2: Create
-  Future<void> saveNote(NoteEntity note) async {
+  //step 0 :add userAuthParam for upmedUC
+  Future<void> saveNote(NoteEntity note, String userAuthId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
+      //# media attacment feat
+      //# user action 2 : finally saving the note
+
+      if (cloudPathsToDelete.isNotEmpty) {
+        //delete the previous Cloud Paths to delete:
+        await _deleteMediaUsecase(publicUrls: cloudPathsToDelete);
+      }
+
+      //1.emp list for cloud urls
+      List<String> newCloudUrls = [];
+
+      //2.get cloud urls if user had selected media
+      //to decide type (.contains '.mp4')in step 3
+      if (selectedLocalMediaPaths.isNotEmpty) {
+        newCloudUrls = await _uploadMultipleMediaUsecase(
+          mediaLocalPaths: selectedLocalMediaPaths,
+          userAuthId: userAuthId,
+        );
+      }
+
+      //3.create med att (nested entities)
+      List<MediaAttachmentNestedEntity> newAttachments = newCloudUrls.map((
+        url,
+      ) {
+        final isVideo =
+            url.toLowerCase().contains('.mp4') ||
+            url.toLowerCase().contains('.mov');
+
+        return MediaAttachmentNestedEntity(
+          mediaType: isVideo ? NoteMediaType.video : NoteMediaType.image,
+          mediaLink: url,
+        );
+      }).toList();
+
+      //4. add att to att list in already existing entity if any
+      //~~1.4 join the edited new cloud media attachments, not old list
+      final allAttachments = [...currentCloudMedia, ...newAttachments];
+      debugPrint(
+        'NoteCtr>saveNote>now ${allAttachments.length} Allattachments are being injected in Note entity ',
+      );
+      //prepare new enity all attachments to finally send to addNoteUC
+      final NoteEntity noteToSave = note.copyWith(
+        mediaAttachments: allAttachments,
+      );
+
+      debugPrint(
+        'NoteCtr>saveNote>New note entity made with allAttList:$noteToSave',
+      );
+
       //just direct() bcz of call in UC ---FOR RDS FireStore
-      await _addNoteUsecase(note);
-      debugPrint('noteCtrl -> addNote -> note title is -> ${note.title}');
+      await _saveNoteUsecase(noteToSave);
+      debugPrint(
+        'noteCtrl -> addNote -> note title is -> ${noteToSave.title} ,.,.,.number of attachments=>${noteToSave.mediaAttachments.length}',
+      );
 
       //attached stream to RxList
       //no need to manually loadnotes
@@ -297,4 +400,49 @@ class NoteController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  //Meadia Attach sub feat
+
+  //UI action [1]:pickMed
+  Future<void> pickLocalMedia({
+    required NoteMediaSource source,
+    required NoteMediaType type,
+  }) async {
+    try {
+      final List<String> pickedPaths = await _pickMediaUsecase.call(
+        source: source,
+        type: type,
+      );
+
+      //only add if user didn't discards
+      if (pickedPaths.isNotEmpty) selectedLocalMediaPaths.addAll(pickedPaths);
+    } catch (e) {
+      debugPrint("NoteController > pickMedia : ERROR ==> $e");
+      errorMessage.value = "Failed to pick images: ${e.toString()}";
+    }
+  }
+
+  //~~~1.3 unified remove (remove curCloud or fresh local paths)
+  //index will come from ListVB of note preview
+  void remove({required int index}) {
+    int cloudMediaListLength = currentCloudMedia.length;
+
+    if (index < cloudMediaListLength) {
+      final String cloudLink = currentCloudMedia[index].mediaLink;
+      cloudPathsToDelete.add(cloudLink);
+      currentCloudMedia.removeAt(index);
+    } else {
+      int localMediaIndex = index - cloudMediaListLength;
+      selectedLocalMediaPaths.removeAt(localMediaIndex);
+    }
+  }
+
+  //for discarding changes
+  //befor Get.back of handle back
+  void clearMediaPreview() {
+    selectedLocalMediaPaths.clear();
+  }
+
+  //# user action 2 : finally saving the note
+  //add code in existing save notes
 }

@@ -27,7 +27,7 @@ class MediaLocalDatasourceImpl implements MediaLocalDatasource {
           source: ImageSource.camera,
         );
 
-        //since single nullable (user Discards process) Xfile
+        //since single(.add) nullable (user Discards process) Xfile
         //null check
         if (image != null) rawPaths.add(image.path);
       } else {
@@ -38,6 +38,10 @@ class MediaLocalDatasourceImpl implements MediaLocalDatasource {
         if (video != null) rawPaths.add(video.path);
       }
     } else if (mediaSource == NoteMediaSource.gallery) {
+      //if user discards then insted of null, we're handed an Empty list
+      //so Null check req
+      //emp list is added to deafault empty list
+
       if (mediaType == NoteMediaType.image) {
         final List<XFile> images = await _imagePicker.pickMultiImage();
         rawPaths.addAll(images.map((file) => file.path));

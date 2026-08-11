@@ -30,7 +30,7 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
   @override
   Future<void> saveNote(Map<String, dynamic> rawNote) async {
     try {
-      debugPrint('=== Note RDS >createNote Started ====');
+      debugPrint('=== Note RDS >saveNote Started ====');
 
       //extract id from Map
       String noteId = rawNote['id'] as String;
@@ -75,7 +75,7 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
     } on FirebaseException catch (e) {
       debugPrint('Note RDS >createNote > FBException : $e');
     } catch (e) {
-      debugPrint('Note RDS >createNote > other Error : $e');
+      debugPrint('Note RDS >saveNote > other Error : $e');
     }
   }
 
@@ -119,7 +119,7 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
         debugPrint(
           "NoteRds>getAllNotes> Stream updated: ${rawNotes.length} notes fetched from fireStore cache/online",
         );
-
+        
         return rawNotes; // This returns the List to the Stream.map
       });
 

@@ -1,4 +1,4 @@
-import 'package:note_app/features/note_app/data/data_sources/note_local_data_sources/note_local_datasource.dart';
+import 'package:flutter/material.dart';
 import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
@@ -13,12 +13,18 @@ class NoteRepositoryImpl implements NoteRepository {
 
   @override
   Stream<List<NoteEntity>> getAllNotes() {
+    debugPrint('NoteRepo impl> getAll Notes Started==============');
+
     Stream<List<Map<String, dynamic>>> rawList = _noteRemoteDataSource
         .getAllNotes();
+
+    debugPrint('got ${rawList.length} notes from noteRDS(fireStore)');
+
     Stream<List<NoteEntity>> noteEntities = rawList.map((listRawJson) {
-      final List<NoteEntity> noteEntityList = listRawJson
-          .map((json) => NoteModel.fromJson(json))
-          .toList();
+      final List<NoteEntity> noteEntityList = listRawJson.map((json) {
+        return NoteModel.fromJson(json);
+      }).toList();
+
       return noteEntityList;
     });
 
@@ -26,7 +32,11 @@ class NoteRepositoryImpl implements NoteRepository {
   }
 
   @override
-  Future<void> saveNotes(NoteEntity note) async {
+  Future<void> saveNote(NoteEntity note) async {
+    debugPrint('NoteRepoimpl>saveNotes>saving the Note Started==============');
+    debugPrint(
+      'NoteRepoimpl>saveNotes>${note.mediaAttachments.length}mediaAttachments in note which\'s passed in param',
+    );
     NoteModel noteModel = NoteModel.fromEntity(note);
     Map<String, dynamic> rawNote = noteModel.toJson();
     await _noteRemoteDataSource.saveNote(rawNote);
@@ -39,12 +49,11 @@ class NoteRepositoryImpl implements NoteRepository {
 
   @override
   Future<void> waitForNoteWrites() async {
-
     //in NoteRDS:
     //since we clicked save button->FS trying to save notes ->if offline , cached .
     //after cache still wait for internet->we wait for pending writes , if more than 3 seconds
     //.timeOut Throws TimeOut error
-    
+
     await _noteRemoteDataSource.waitForNoteWrites();
   }
 

@@ -100,6 +100,7 @@ class NotesView extends GetView<NoteController> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () {
           // Passing 'null' tells the next screen: "This is a brand new note!"
+          controller.setupNoteForEditing();
           Get.toNamed(AppRoutes.editNote, arguments: null);
         },
         child: const Icon(Icons.add, color: Colors.white),

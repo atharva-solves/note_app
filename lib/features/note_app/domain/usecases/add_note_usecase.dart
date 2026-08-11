@@ -26,6 +26,6 @@ class AddNoteUsecase {
   //-------------FB Remote Data Soure---------------
 
   Future<void> call(NoteEntity note) async {
-    await _noteRepository.saveNotes(note);
+    await _noteRepository.saveNote(note);
   }
 }

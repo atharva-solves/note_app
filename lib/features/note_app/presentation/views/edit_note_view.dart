@@ -1,12 +1,15 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
+import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
 //firestore has functionality to generate ID (we'll use for note ID)
 //no need of extra package
@@ -35,7 +38,10 @@ class _EditditNoteViewState extends State<EditditNoteView> {
   @override
   void initState() {
     super.initState();
-
+    //checking wether previous media attachments are inserted
+    debugPrint(
+      '<><><><><> Edit Note View>onInit > previous attachments : ${_noteController.currentCloudMedia.length} <><><><><><><><><',
+    );
     //fill if note exist else empty str
     _titleController = TextEditingController(
       text: _currentNote != null ? _currentNote!.title : '',
@@ -61,22 +67,25 @@ class _EditditNoteViewState extends State<EditditNoteView> {
 
   //runs on every change for local DS Get Storage ,its fast and free
   //auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
-  _saveNote() {
+  Future<void> _saveNote() async{
     //extract String from ctrl
     final String currentTitle = _titleController.text;
     final String currentContent = _contentController.text;
+    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
 
-    //Gaurd Clause.gaurd us from running actions if the note is EMPTY.
+    //Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
     //Soc 1.validation 1.Actions
     //let Back buttons handle the deleting action
-    if (currentTitle.trim().isEmpty && currentContent.trim().isEmpty) {
+    if (currentTitle.trim().isEmpty &&
+        currentContent.trim().isEmpty &&
+        _noteController.currentCloudMedia.isEmpty &&
+        _noteController.selectedLocalMediaPaths.isEmpty) {
       return;
     }
 
     //Soc .Actions A.If new note,ADD(create) else B.Update
     if (_currentNote == null) {
-      final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
-      _currentNote = NoteModel(
+      _currentNote = NoteEntity(
         //first time , brand new note ->id,uid temporary empty ''
         //NoteRDS firestore will asign id
         id: '',
@@ -87,7 +96,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
         isImportant: false,
       );
 
-      _noteController.saveNote(_currentNote!);
+      _noteController.saveNote(_currentNote!, userAuthId);
     } else {
       _currentNote = _currentNote!.copyWith(
         title: currentTitle,
@@ -96,7 +105,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
       //_noteController.updateNote(_currentNote!);
 
       //saveNotes , single Upsert Method for RDS FireStore
-      _noteController.saveNote(_currentNote!);
+     await _noteController.saveNote(_currentNote!, userAuthId);
     }
   }
 
@@ -115,13 +124,70 @@ class _EditditNoteViewState extends State<EditditNoteView> {
       await _noteController.deleteNote(_currentNote!.id);
     } */
 
-    print(
-      "Back Button is Pressed .Local Data Storage List has ${_noteController.noteList.length.toString()} items.   . . . . . = = = = List --> ${_noteController.noteList} .. .. Cureent Note --> ${_currentNote?.title.toString()}",
+    debugPrint(
+      "Moving Back .Local Data Storage List has ${_noteController.noteList.length.toString()} items.   . . . . . = = = = List --> ${_noteController.noteList} .. .. Cureent Note --> ${_currentNote?.title.toString()}",
     );
+    //discard local selected and previous cloud media removes
+    //keep previous cloud media
+    _noteController.clearMediaPreview();
 
     _currentNote =
         null; // Clear the local variable so it knows the note is gone
     Get.back();
+  }
+
+  // STEP 3: Minimalist Bottom Sheet Menu
+  void _showAttachmentBottomSheet(BuildContext context) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take Photo'),
+              onTap: () {
+                _noteController.pickLocalMedia(
+                  source: NoteMediaSource.camera,
+                  type: NoteMediaType.image,
+                );
+                Get.back();
+              },
+            ),
+            /* ListTile(
+              leading: const Icon(Icons.videocam_rounded),
+              title: const Text('Record Video'),
+              onTap: () {
+                _noteController.pickLocalMedia(
+                  source: NoteMediaSource.camera,
+                  type: NoteMediaType.video,
+                );
+                Get.back();
+              },
+            ), */
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose Images'),
+              onTap: () {
+                _noteController.pickLocalMedia(
+                  source: NoteMediaSource.gallery,
+                  type: NoteMediaType
+                      .image, // Any maps to images/videos in gallery
+                );
+                Get.back();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -153,7 +219,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
             Obx(() {
               final bool saving = _noteController.isLoading.value;
 
-              return IconButton(
+              return saving?CircularProgressIndicator():IconButton(
                 icon: Icon(
                   Icons.check_rounded,
                   // Changes color to grey if saving, otherwise black
@@ -163,43 +229,132 @@ class _EditditNoteViewState extends State<EditditNoteView> {
                 // Disables the button press while saving to prevent duplicate taps
                 onPressed: saving
                     ? null
-                    : () {
-                        _saveNote();
+                    : () async {
+                       await  _saveNote();
                         _handleBackButton();
                       },
               );
             }),
           ],
         ),
+        // Minimalist Bottom Nav to hold the '+' icon
+        bottomNavigationBar: BottomAppBar(
+          color: Colors.white,
+          elevation: 0,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 28),
+                onPressed: () => _showAttachmentBottomSheet(context),
+              ),
+            ],
+          ),
+        ),
 
         // 3. Simple Text Input Fields
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            children: [
-              // TITLE INPUT
-              TextField(
-                controller: _titleController,
-                maxLines: 1,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Title',
-                  hintStyle: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  border: InputBorder.none, // Removes standard ugly underlines
-                ),
-              ),
-              const SizedBox(height: 8),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              children: [
+                // --- SIMPLIFIED PACKAGE-DRIVEN MEDIA LIST ---
+                Obx(() {
+                  final totalMedia =
+                      _noteController.currentCloudMedia.length +
+                      _noteController.selectedLocalMediaPaths.length;
+                  if (totalMedia == 0) return const SizedBox.shrink();
 
-              // CONTENT INPUT
-              Expanded(
-                child: TextField(
+                  return SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: totalMedia,
+                      itemBuilder: (context, index) {
+                        final cloudLen =
+                            _noteController.currentCloudMedia.length;
+                        final isCloud = index < cloudLen;
+                        final path = isCloud
+                            ? _noteController.currentCloudMedia[index].mediaLink
+                            : _noteController.selectedLocalMediaPaths[index -
+                                  cloudLen];
+
+                        //dont bload UI widgets (decImg)
+                        //calculate image provider first &
+                        //simple provide image (cached if cloud and file if local)
+                        final ImageProvider imageProvider = isCloud
+                            ? CachedNetworkImageProvider(path) as ImageProvider
+                            : FileImage(File(path));
+                        debugPrint(
+                          '<><><><><><> Media Preview LVB:current media(isCloud:$isCloud) path:$path <><><><><><>',
+                        );
+                        return GestureDetector(
+                          onTap: () {
+                            //no need to build detail image view
+                            //easy_image_provider
+                            showImageViewer(
+                              context,
+                              imageProvider,
+                              swipeDismissible: true,
+                              doubleTapZoomable: true,
+                            );
+                          },
+
+                          child: Container(
+                            width: 100,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: imageProvider,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Align(
+                              alignment: Alignment.topRight,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.cancel,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                    
+                                    _noteController.remove(index: index);
+
+                                }
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 16),
+
+                // TITLE INPUT
+                TextField(
+                  controller: _titleController,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Title',
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    border:
+                        InputBorder.none, // Removes standard ugly underlines
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // CONTENT INPUT
+                TextField(
                   controller: _contentController,
                   maxLines:
                       null, // Allows the text field to grow infinitely downwards
@@ -218,8 +373,8 @@ class _EditditNoteViewState extends State<EditditNoteView> {
                     border: InputBorder.none,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

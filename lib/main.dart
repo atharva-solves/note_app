@@ -34,7 +34,7 @@ void main() async {
   );
 
   await Supabase.initialize(
-    url: "https://tryfzkjzywvgjiuopdpw.supabase.co/rest/v1/",
+    url: "https://tryfzkjzywvgjiuopdpw.supabase.co",
     publishableKey:
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeWZ6a2p6eXd2Z2ppdW9wZHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNjA2ODQsImV4cCI6MjEwMTczNjY4NH0.4BpbG1wYhlzbK9St1DllDwRqNL-dr2T6n0wuMzSHGPQ",
   );

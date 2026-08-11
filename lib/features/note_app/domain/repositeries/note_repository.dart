@@ -15,7 +15,7 @@ abstract class NoteRepository {
   // --------------- Note Cloud Data Storage -------------
 
   //save single one note at time , not complete list unlike get Storage
-  Future<void> saveNotes(NoteEntity note);
+  Future<void> saveNote(NoteEntity note);
   //return Futue
   Stream<List<NoteEntity>> getAllNotes();
 
@@ -27,4 +27,6 @@ abstract class NoteRepository {
 
   //clear if online (waiting stoped before 3 sec->notes stored online->clear offline cache [bcz we need to signout]).
   Future<void> clearLocalNoteCache();
+
+  
 }

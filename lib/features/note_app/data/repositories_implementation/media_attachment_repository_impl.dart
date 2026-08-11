@@ -4,6 +4,7 @@ import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.d
 import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
 
 class MediaAttachmentRepositoryImpl implements MediaAttachementRepository {
+  //orchestrate between DS
   final MediaLocalDatasource _mediaLocalDatasource;
   final MediaRemoteDatasource _mediaRemoteDatasource;
 
@@ -29,9 +30,10 @@ class MediaAttachmentRepositoryImpl implements MediaAttachementRepository {
     required List<String> mediaLocalPaths,
     required String userAuthId,
   }) async {
-    //chef(rDS) handling order tickets to Waiter(Future)
-    //to  (.map) (since map doesnt wait for food[media upload task] to be made completely)
+    //(rDS)oven handling order tickets(order token/reciepts) to Waiter(Future)
+    //(.map)chef (since chef doesnt wait for food[media upload task] to be made completely)
     //faster that for in loop bcz all tasks are being completed at once
+
     List<Future<String>> uploadTasks = mediaLocalPaths.map((localPath) {
       return _mediaRemoteDatasource.uploadMedia(
         localPath: localPath,
@@ -39,7 +41,7 @@ class MediaAttachmentRepositoryImpl implements MediaAttachementRepository {
       );
     }).toList();
 
-    //wait for food tobe made (upload hughe binary file to db)
+    //wait for food to be made (upload hughe binary file to db)
     //return actual food(List<Strings>) to customer(repo)
     final List<String> cloudUrls = await Future.wait(uploadTasks);
 
@@ -56,5 +58,10 @@ class MediaAttachmentRepositoryImpl implements MediaAttachementRepository {
       localPath: mediaLocalPath,
       userAuthId: userAuthId,
     );
+  }
+
+  @override
+  Future<void> deleteMedia({required List<String> publicUrls}) async {
+    await _mediaRemoteDatasource.deleteMedia(publicUrls: publicUrls);
   }
 }

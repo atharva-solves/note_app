@@ -8,6 +8,8 @@ abstract class MediaRemoteDatasource {
     required String localPath,
     required String userAuthId,
   });
+
+  Future<void> deleteMedia({required List<String> publicUrls});
 }
 
 class MediaRemoteDatasourceImpl implements MediaRemoteDatasource {
@@ -55,6 +57,32 @@ class MediaRemoteDatasourceImpl implements MediaRemoteDatasource {
       debugPrint('MediaRDS>uploadMedia>caught error > $e');
       // If the internet drops or the bucket doesn't exist, we catch the error
       throw Exception('Failed to upload media to Supabase: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteMedia({required List<String> publicUrls}) async {
+    try {
+      debugPrint('MediaRDS > deleteMediaFiles Started ================');
+      final List<String> storagePathsToDelete = publicUrls.map((url) {
+        //specify BucketPath (bcz we already know buck Name)
+        final String bucketPath = '/$supabaseBucketName/';
+        final int startIndexOfStoragePath =
+            url.indexOf(bucketPath) + bucketPath.length;
+        return url.substring(startIndexOfStoragePath);
+      }).toList();
+
+      debugPrint(
+        'MediaRDS > deleteMediaFiles > ${storagePathsToDelete.length} storage paths to delete',
+      );
+      await _supabaseClient.storage
+          .from(supabaseBucketName)
+          .remove(storagePathsToDelete);
+
+      debugPrint('MediaRDS > deleteMediaFiles > Deletd paths Successfully');
+    } catch (e) {
+      debugPrint('MediaRDS > deleteMediaFiles > caught error > $e');
+      throw Exception('Failed to delete media from Supabase: $e');
     }
   }
 }
