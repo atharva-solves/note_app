@@ -2,10 +2,11 @@ import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
 import 'package:note_app/features/auth/presentation/views/auth_view.dart';
 import 'package:note_app/features/auth/presentation/views/otp_view.dart';
-import 'package:note_app/features/auth/presentation/views/splash_view.dart';
 import 'package:note_app/features/note_app/presentation/bindings/note_binding.dart';
 import 'package:note_app/features/note_app/presentation/views/notes_view.dart';
 import 'package:note_app/features/note_app/presentation/views/edit_note_view.dart';
+import 'package:note_app/features/splash/presentation/bindings/splash_binding.dart';
+import 'package:note_app/features/splash/presentation/views/splash_view.dart';
 
 abstract class AppPages {
   //priv constr
@@ -16,7 +17,7 @@ abstract class AppPages {
   static final List<GetPage> pages = [
     //feature specific ctr =>bind with Get page
     //Global ctr (initBind) => Not here. bcz in main.
-    GetPage(name: AppRoutes.splash, page: () => const SplashView()),
+    GetPage(name: AppRoutes.splash, page: () => const SplashView(),binding: SplashBinding()),
     GetPage(name: AppRoutes.login, page: () =>  AuthView()),
     GetPage(
       name: AppRoutes.home,

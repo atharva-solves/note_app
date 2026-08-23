@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:note_app/core/routes/app_routes.dart';
@@ -90,13 +92,13 @@ class AuthController extends GetxController {
 
   //custom function to route according to auth Status
   void _setInitialScreen(UserEntity? userEntity) {
-    if (userEntity == null) {
+   Timer(const Duration(seconds: 3), (){ if (userEntity == null) {
       debugPrint("Auth Stream: User is null -> Routing to Login");
       Get.offAllNamed(AppRoutes.login);
     } else {
       debugPrint("Auth Stream: User active -> Routing to Home");
       Get.offAllNamed(AppRoutes.home);
-    }
+    }});
   }
 
   //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.

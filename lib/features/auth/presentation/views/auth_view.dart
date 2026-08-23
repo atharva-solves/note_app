@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:note_app/core/routes/app_routes.dart';
 import '../controllers/auth_controller.dart';
 
 class AuthView extends GetView<AuthController> {
