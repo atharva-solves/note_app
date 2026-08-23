@@ -9,8 +9,6 @@ class SplashController extends GetxController {
   }
 
   void _startSplashTimer() {
-    Timer(const Duration(seconds: 4), () {
-     
-    });
+    Timer(const Duration(seconds: 4), () {});
   }
 }

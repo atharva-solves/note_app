@@ -6,9 +6,9 @@
     <!-- 'required="false"' means the app can still run even if the device doesn't have a camera. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
-        android:label="note_app"
+        android:label="Simply Note"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
