@@ -1,5 +1,5 @@
-import 'package:note_app/features/note_app/data/data_sources/note_local_data_sources/media_local_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/media_remote_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/media_local_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/media_remote_datasource.dart';
 import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
 import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
 

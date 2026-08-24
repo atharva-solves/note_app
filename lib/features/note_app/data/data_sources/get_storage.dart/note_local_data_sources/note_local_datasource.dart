@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:note_app/core/services/local_storage_service.dart';
 // NoteEntity import removed! LDS shouldn't know about Entities.
 
-class NoteLocalStorageDataSource {
+class NoteLocalDataSource {
   final StorageService _storageService;
   static const String _noteKey = 'MY_NOTES_DATABASE';
 
-  NoteLocalStorageDataSource({required StorageService storageService})
+  NoteLocalDataSource({required StorageService storageService})
     : _storageService = storageService;
 
   // FIX: Changed return type to List<dynamic>? because it reads raw JSON from storage

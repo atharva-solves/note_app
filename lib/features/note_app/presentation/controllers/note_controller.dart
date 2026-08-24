@@ -424,7 +424,7 @@ class NoteController extends GetxController {
 
   //~~~1.3 unified remove (remove curCloud or fresh local paths)
   //index will come from ListVB of note preview
-  void remove({required int index}) {
+  void removeMedia({required int index}) {
     int cloudMediaListLength = currentCloudMedia.length;
 
     if (index < cloudMediaListLength) {

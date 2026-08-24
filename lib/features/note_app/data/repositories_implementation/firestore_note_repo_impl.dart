@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
+import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/note_remote_data_source.dart';
 import 'package:note_app/features/note_app/data/models/note_model.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 
-class NoteRepositoryImpl implements NoteRepository {
+class FireStoreNoteRepoImpl implements NoteRepository {
   //--------- Note Remote DS (FireStore)-------------
 
   final NoteRemoteDataSource _noteRemoteDataSource;
-  NoteRepositoryImpl({required NoteRemoteDataSource noteRDS})
+  FireStoreNoteRepoImpl({required NoteRemoteDataSource noteRDS})
     : _noteRemoteDataSource = noteRDS;
 
   @override

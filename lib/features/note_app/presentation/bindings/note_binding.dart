@@ -9,10 +9,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_local_data_sources/media_local_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/media_remote_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/note_remote_datasources.dart/note_remote_data_source.dart';
-import 'package:note_app/features/note_app/data/repositories_implementation/note_repository_impl.dart';
+import 'package:note_app/features/note_app/data/data_sources/media_local_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/media_remote_datasource.dart';
+import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/note_remote_data_source.dart';
+import 'package:note_app/features/note_app/data/repositories_implementation/firestore_note_repo_impl.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
 import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
@@ -57,7 +57,7 @@ class NoteBinding extends Bindings {
 
     //RDS FireStore
     Get.lazyPut<NoteRepository>(
-      () => NoteRepositoryImpl(noteRDS: Get.find<NoteRemoteDataSource>()),
+      () => FireStoreNoteRepoImpl(noteRDS: Get.find<NoteRemoteDataSource>()),
     );
 
     Get.lazyPut<MediaAttachementRepository>(

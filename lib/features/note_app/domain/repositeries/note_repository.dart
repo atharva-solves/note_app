@@ -3,7 +3,8 @@
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 
 abstract class NoteRepository {
-  // --------------- Note Local Data Storage -------------
+  // ---------------Previous  Note Local Data Storage Solo Logic -------------
+
   /* 
   //rule 1 must fetch list in NoteModel
   List<NoteEntity> getNotes();
@@ -12,7 +13,7 @@ abstract class NoteRepository {
   //rule 2 must save list of models in storage
   Future<void> saveNotes(List<NoteEntity> notesList);
 */
-  // --------------- Note Cloud Data Storage -------------
+  // --------------- both now -------------
 
   //save single one note at time , not complete list unlike get Storage
   Future<void> saveNote(NoteEntity note);

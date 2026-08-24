@@ -318,7 +318,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
                                 ),
                                 onPressed: () {
                                     
-                                    _noteController.remove(index: index);
+                                    _noteController.removeMedia(index: index);
 
                                 }
                               ),
