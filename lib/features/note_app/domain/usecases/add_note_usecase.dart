@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
 

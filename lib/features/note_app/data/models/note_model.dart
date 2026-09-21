@@ -23,7 +23,7 @@ class NoteModel extends NoteEntity {
       // JSON doesn't understand DateTime, so we parse the String back into a DateTime object
       createdAt: DateTime.parse(json['createdAt'] as String),
       isImportant: json['isImportant'] as bool,
-      // Used in your Repository when saving data from the UI down to the FireStore NoteRDS database
+      // Used in  Repository when saving data from the UI down to the FireStore NoteRDS database
       //### ADDED NULL CHECK bcz old notes (before attachment feat doesnt have medAtt arg)
       //there fore null check eventhough new entity has this.medAtt=[] fallBack
       //if not null=> listOfMedAtt :or if null then [] 

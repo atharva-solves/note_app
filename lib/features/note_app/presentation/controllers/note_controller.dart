@@ -1,8 +1,7 @@
 //for timeOut
 import 'dart:async';
-
+import 'package:firebase_auth/firebase_auth.dart'; // NEW CHANGE: Added for user auth ID in saveCurrentNote
 import 'package:flutter/material.dart';
-
 import 'package:get/get.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
@@ -25,7 +24,6 @@ class NoteController extends GetxController {
   //3.reactive var List
   //4.onInit to load
   //5. meths (UCs) (Actn -> Exec -> reload)
-
   final AddNoteUsecase _saveNoteUsecase;
   final GetNotesUsecase _getNotesUsecase;
   //since upsert in firestore, there fore no use in RDS
@@ -40,11 +38,22 @@ class NoteController extends GetxController {
   final SignOutUsecase _signOutUsecase;
 
   //meadia attacment sub feat
-
   //action :1.creat and Read
   final PickMediaUsecase _pickMediaUsecase;
   final UploadMultipleMediaUsecase _uploadMultipleMediaUsecase;
   final DeleteMediaUsecase _deleteMediaUsecase;
+
+  // NEW CHANGE: Controllers for Title & Content held inside NoteController so UI can be StatelessWidget
+  // late :only init when actually page/view is opened(init).
+  late TextEditingController titleController;
+  late TextEditingController contentController;
+
+  // NEW CHANGE: Hold currentNote reference inside controller
+  // arg receive
+  // remove 'final' because if this starts as 'null',
+  // due to (constantly listen and save business logic)
+  // it will transform into a real note the second the user types a letter!
+  NoteEntity? currentNote;
 
   NoteController({
     required AddNoteUsecase addNoteUsecase,
@@ -58,21 +67,22 @@ class NoteController extends GetxController {
     required PickMediaUsecase pickMediaUsecase,
     required UploadMultipleMediaUsecase uploadMultipleMediaUsecase,
     required DeleteMediaUsecase deleteMediaUsecase,
-  }) : _deleteMediaUsecase = deleteMediaUsecase,
-       _pickMediaUsecase = pickMediaUsecase,
-       _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
-       _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
-       _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
-       _signOutUsecase = signOutUsecase,
-       _saveNoteUsecase = addNoteUsecase,
-       _getNotesUsecase = getNotesUsecase,
-       // _updateNoteUsecase = updateNoteUsecase,
-       _deleteNoteUsecase = deleteNoteUsecase,
-       _toggleImportantUsecase = toggleImportantUsecase;
+  })  : _deleteMediaUsecase = deleteMediaUsecase,
+        _pickMediaUsecase = pickMediaUsecase,
+        _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
+        _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
+        _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
+        _signOutUsecase = signOutUsecase,
+        _saveNoteUsecase = addNoteUsecase,
+        _getNotesUsecase = getNotesUsecase,
+        // _updateNoteUsecase = updateNoteUsecase,
+        _deleteNoteUsecase = deleteNoteUsecase,
+        _toggleImportantUsecase = toggleImportantUsecase;
 
   RxList<NoteEntity> noteList = <NoteEntity>[].obs;
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
+
   //#media attachment subfeature
   //first save local Media paths for USER PREVIEW
   RxList<String> selectedLocalMediaPaths = <String>[].obs;
@@ -85,14 +95,30 @@ class NoteController extends GetxController {
 
   List<String> cloudPathsToDelete = [];
 
+  // NEW CHANGE: Initialize TextEditingControllers on controller lifecycle init
+  @override
+  void onInit() {
+    super.onInit();
+    titleController = TextEditingController();
+    contentController = TextEditingController();
+  }
+
+  // Death ! clear ram when view is LEFT
+  // NEW CHANGE: Clean up controllers on controller lifecycle close
+  @override
+  void onClose() {
+    // auto deletes listner
+    titleController.dispose();
+    contentController.dispose();
+    super.onClose();
+  }
+
   //solved ghost Ref bug
   //remove loadNotes() from onInit
   //add in onReady
   //with delay for 100% gaurantee for old devices
   //so change is noted by RxList
-
   //comment out for mocking
-
   @override
   void onReady() {
     super.onReady();
@@ -104,64 +130,25 @@ class NoteController extends GetxController {
         '<><><><><><>onReady of NoteCtr,now contains ${currentCloudMedia.length} previous media  attachments <><><><><><><>>',
       );
     }
-
     //now the getNotes usecase is a Stream , so no need to every time manually call loadNotes
     //just attach RxList var to getNotesUC onReady.
-
-    noteList.bindStream(_getNotesUsecase());
-
-    //attached stream to RxList
+    noteList.bindStream(_getNotesUsecase()); //attached stream to RxList
     //no need to manually loadnotes
     //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-
     //fireStore Stream (.snapShot Tootks time)
     //Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
 
-  //mocking NoteView
-  /*  @override
-  void onReady() {
-    super.onReady();
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      //  TEMPORARY DUMMY DATA FOR UI TESTING 
-      noteList.assignAll([
-        NoteEntity(
-          id: '1',
-          title: 'Grocery List',
-          content:
-              'Almond milk, eggs, whole wheat bread, and spinach for the week.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-        NoteEntity(
-          id: '2',
-          title: 'App Ideas',
-          content:
-              'A clean architecture note taking app with a Gen-Z minimalist aesthetic. Must use GetX.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: true,
-        ),
-        NoteEntity(
-          id: '3',
-          title: '', // Testing what happens if title is empty
-          content:
-              'This note has no title, just some random thoughts and musings for the day.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-      ]);
-
-      // COMMENT OUT THE REAL DATABASE CALL FOR NOW
-      // loadNotes();
-    });
-  } */
-
   //~~1.2 call this before nav to Edit note
   //~~ clear the previous state
   void setupNoteForEditing({NoteEntity? note}) {
-    selectedLocalMediaPaths.clear();
+    // NEW CHANGE: Receive note argument & update text fields from controller
+    currentNote = note;
+    // fill if note exist else empty str
+    titleController.text = currentNote != null ? currentNote!.title : '';
+    contentController.text = currentNote != null ? currentNote!.content : '';
 
+    selectedLocalMediaPaths.clear();
     if (note != null && note.mediaAttachments.isNotEmpty) {
       //checking wether previous media attachments are inserted
       debugPrint('Setting upNote for Edit View');
@@ -176,6 +163,70 @@ class NoteController extends GetxController {
     }
   }
 
+  // NEW CHANGE: Moved `_saveNote` logic completely into `NoteController` to keep UI dumb
+  // runs on every change for local DS Get Storage ,its fast and free
+  // auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
+  Future<void> saveCurrentNote() async {
+    // extract String from ctrl
+    final String currentTitle = titleController.text;
+    final String currentContent = contentController.text;
+    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
+
+    // Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
+    // Soc 1.validation 1.Actions
+    // let Back buttons handle the deleting action
+    if (currentTitle.trim().isEmpty &&
+        currentContent.trim().isEmpty &&
+        currentCloudMedia.isEmpty &&
+        selectedLocalMediaPaths.isEmpty) {
+      return;
+    }
+
+    // Soc .Actions A.If new note,ADD(create) else B.Update
+    if (currentNote == null) {
+      currentNote = NoteEntity(
+        // first time , brand new note ->id,uid temporary empty ''
+        // NoteRDS firestore will asign id
+        id: '',
+        userId: userAuthId,
+        title: currentTitle,
+        content: currentContent,
+        createdAt: DateTime.now(),
+        isImportant: false,
+      );
+      await saveNote(currentNote!, userAuthId);
+    } else {
+      currentNote = currentNote!.copyWith(
+        title: currentTitle,
+        content: currentContent,
+      );
+      // _noteController.updateNote(_currentNote!);
+      // saveNotes , single Upsert Method for RDS FireStore
+      await saveNote(currentNote!, userAuthId);
+    }
+  }
+
+  // handle Back buttons
+  // NEW CHANGE: Moved `_handleBackButton` logic completely into NoteController
+  Future<void> handleBackButton() async {
+    // Explicit save note UI/UX ,so we dont auto save on back.
+    // changes discarded after back.
+    /* final String currentTitle = _titleController.text;
+    final String currentContent = _contentController.text;
+    if (currentTitle.trim().isEmpty && currentContent.trim().isEmpty && _currentNote != null) {
+      //await since noteController's deleteNote uses await.it takes time
+      await _noteController.deleteNote(_currentNote!.id);
+    } */
+    debugPrint(
+      "Moving Back .Local Data Storage List has ${noteList.length.toString()} items. . . . . . = = = = List -->${noteList} .. .. Cureent Note --> ${currentNote?.title.toString()}",
+    );
+    // discard local selected and previous cloud media removes
+    // keep previous cloud media
+    clearMediaPreview();
+    currentNote = null; // Clear the local variable so it knows the note is gone
+    Get.back();
+  }
+
   //UI SignOut Action:
   Future<void> noteViewSignOut() async {
     try {
@@ -183,25 +234,21 @@ class NoteController extends GetxController {
       //dialog -> like nav to new screen
       //if want to close -> get Back to previous screen
       Get.dialog(
-        Center(child: CircularProgressIndicator()),
+        const Center(child: CircularProgressIndicator()),
         barrierDismissible: false,
       );
-
       //we already tapped save Note button in edit Note view
       //fireStore constantly waiting for connection and trying to push notes
       //save in RDB as soon as reconnect
       await _waitfornoteswriteUsecase();
-
       //we waited-->if notes Pushed ,online ,
       //#_clearlocal Persistance , #_signout ,#(get back)close Loading Spinner
       await _clearnoteslocalcacheUseCase();
       await _signOutUsecase();
-
       //if more that 3 sec--> timeOut Exception
     } on TimeoutException {
       debugPrint("NoteController > signOut : TIMEOUT (User is offline)");
       Get.back(); // Close loading indicator
-
       // Show warning dialog
       _showUnsavedOfflineWarnDialog();
     } catch (e) {
@@ -232,57 +279,20 @@ class NoteController extends GetxController {
     }
   }
 
-  //UI Action 1:Read
-
-  /////--------------RDS (FireStore)----------
-  /*  Future<void> loadNotes() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = await _getNotesUsecase();
-      noteList.assignAll(notes);
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-
-  //----------------LDS Get Storage----------
-  /* void loadNotes() {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = _getNotesUsecase.execute();
-      noteList.value = notes;
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-  //----------------Load Notes From Getstorage ENDS---------------
-
   //UI Action 2: Create
   //step 0 :add userAuthParam for upmedUC
   Future<void> saveNote(NoteEntity note, String userAuthId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //# media attacment feat
       //# user action 2 : finally saving the note
-
       if (cloudPathsToDelete.isNotEmpty) {
         //delete the previous Cloud Paths to delete:
         await _deleteMediaUsecase(publicUrls: cloudPathsToDelete);
       }
-
       //1.emp list for cloud urls
       List<String> newCloudUrls = [];
-
       //2.get cloud urls if user had selected media
       //to decide type (.contains '.mp4')in step 3
       if (selectedLocalMediaPaths.isNotEmpty) {
@@ -291,32 +301,28 @@ class NoteController extends GetxController {
           userAuthId: userAuthId,
         );
       }
-
       //3.create med att (nested entities)
       List<MediaAttachmentNestedEntity> newAttachments = newCloudUrls.map((
         url,
       ) {
         final isVideo =
-            url.toLowerCase().contains('.mp4') ||
-            url.toLowerCase().contains('.mov');
-
+            url.toLowerCase().contains('.mp4') || url.toLowerCase().contains('.mov');
         return MediaAttachmentNestedEntity(
           mediaType: isVideo ? NoteMediaType.video : NoteMediaType.image,
           mediaLink: url,
         );
       }).toList();
-
       //4. add att to att list in already existing entity if any
       //~~1.4 join the edited new cloud media attachments, not old list
       final allAttachments = [...currentCloudMedia, ...newAttachments];
       debugPrint(
         'NoteCtr>saveNote>now ${allAttachments.length} Allattachments are being injected in Note entity ',
       );
+
       //prepare new enity all attachments to finally send to addNoteUC
       final NoteEntity noteToSave = note.copyWith(
         mediaAttachments: allAttachments,
       );
-
       debugPrint(
         'NoteCtr>saveNote>New note entity made with allAttList:$noteToSave',
       );
@@ -326,7 +332,6 @@ class NoteController extends GetxController {
       debugPrint(
         'noteCtrl -> addNote -> note title is -> ${noteToSave.title} ,.,.,.number of attachments=>${noteToSave.mediaAttachments.length}',
       );
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -339,33 +344,14 @@ class NoteController extends GetxController {
     }
   }
 
-  //UI Action 3:Update
-
-  //No need for RDS Firestore  bcs Upsert (saveNotes) docRef.set()
-  /*  Future<void> updateNote(NoteEntity updatedNote) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      await _updateNoteUsecase.execute(updatedNote);
-      loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>updateNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
- */
   //UI Action 4:Delete a note
   Future<void> deleteNote(String noteId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //Direct () .No need of exec bcz call in UC
       //RDS FireStore
       await _deleteNoteUsecase(noteId);
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -384,11 +370,9 @@ class NoteController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //Need to pass Entity for RDS FireStore
       await _toggleImportantUsecase(noteEntity: noteEntity);
       //await _toggleImportantUsecase.execute(noteId);
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -402,7 +386,6 @@ class NoteController extends GetxController {
   }
 
   //Meadia Attach sub feat
-
   //UI action [1]:pickMed
   Future<void> pickLocalMedia({
     required NoteMediaSource source,
@@ -413,7 +396,6 @@ class NoteController extends GetxController {
         source: source,
         type: type,
       );
-
       //only add if user didn't discards
       if (pickedPaths.isNotEmpty) selectedLocalMediaPaths.addAll(pickedPaths);
     } catch (e) {
@@ -426,7 +408,6 @@ class NoteController extends GetxController {
   //index will come from ListVB of note preview
   void removeMedia({required int index}) {
     int cloudMediaListLength = currentCloudMedia.length;
-
     if (index < cloudMediaListLength) {
       final String cloudLink = currentCloudMedia[index].mediaLink;
       cloudPathsToDelete.add(cloudLink);
@@ -442,7 +423,4 @@ class NoteController extends GetxController {
   void clearMediaPreview() {
     selectedLocalMediaPaths.clear();
   }
-
-  //# user action 2 : finally saving the note
-  //add code in existing save notes
 }

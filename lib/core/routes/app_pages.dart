@@ -25,7 +25,7 @@ abstract class AppPages {
       page: () => const NotesView(),
       binding: NoteBinding(),
     ),
-    GetPage(name: AppRoutes.editNote, page: () => const EditditNoteView()),
+    GetPage(name: AppRoutes.editNote, page: () => const EditNoteView()),
     GetPage(name: AppRoutes.otpView, page: ()=> OtpView())
   ];
 }

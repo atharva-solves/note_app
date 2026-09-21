@@ -1,5 +1,5 @@
 //contract of rules,
-//(ctr,UI : models)<--Repo-->(local storage:maps)
+//(ctr,UI : Entitiies)<--Repo-->(local storage:maps)
 import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
 
 abstract class NoteRepository {
@@ -17,13 +17,14 @@ abstract class NoteRepository {
 
   //save single one note at time , not complete list unlike get Storage
   Future<void> saveNote(NoteEntity note);
-  //return Futue
+  //return Future
+
   Stream<List<NoteEntity>> getAllNotes();
 
   //seperate delete operation for single note
   Future<void> deleteNote(String noteId);
 
-  //check User Offline (if waiting For Pending offline notes(FireStore Off feat) took more than 3 seconds)
+  //check User Offline (if waiting For Pending offline notes(FireStore Off feat) to be saved online took more than 3 seconds)
   Future<void> waitForNoteWrites();
 
   //clear if online (waiting stoped before 3 sec->notes stored online->clear offline cache [bcz we need to signout]).
