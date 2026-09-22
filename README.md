@@ -8,20 +8,19 @@ The project uses **GetX, Firebase Authentication, Cloud Firestore, GetStorage, S
 
 | Authentication & Home | Notes Workspace |
 | --- | --- |
-| <img src="app_screenshots/simply_note/login.png.jpg" width="375" alt="Login Screen"> | <img src="app_screenshots/simply_note/notes_view.png.jpg" width="375" alt="Notes Workspace View"> |
+| <img src="app_screenshots/simply_note/login.png.jpg" width="188" alt="Login Screen"> | <img src="app_screenshots/simply_note/notes_view.png.jpg" width="188" alt="Notes Workspace View"> |
 
 | Creating/Editing Notes | Image Selection Options |
 | --- | --- |
-| <img src="app_screenshots/simply_note/edit_note.png.jpg" width="375" alt="Edit Note Layout"> | <img src="app_screenshots/simply_note/media_attachment_options.png.jpg" width="375" alt="Media Options Context Menu"> |
+| <img src="app_screenshots/simply_note/edit_note.png.jpg" width="188" alt="Edit Note Layout"> | <img src="app_screenshots/simply_note/media_attachment_options.png.jpg" width="188" alt="Media Options Context Menu"> |
 
 | Capturing Imagery | Permission Guardrails |
 | --- | --- |
-| <img src="app_screenshots/simply_note/capture_image.png.jpg" width="375" alt="Camera Capture Mode"> | <img src="app_screenshots/simply_note/camera_permissions.png.jpg" width="375" alt="OS Camera Access Dialog"> |
+| <img src="app_screenshots/simply_note/capture_image.png.jpg" width="188" alt="Camera Capture Mode"> | <img src="app_screenshots/simply_note/camera_permissions.png.jpg" width="188" alt="OS Camera Access Dialog"> |
 
 | Interactive Verification | Unsaved Progress Warning |
 | --- | --- |
-| <img src="app_screenshots/simply_note/otp_screen.png.jpg" width="375" alt="OTP Pin Entry Screen"> | <img src="app_screenshots/simply_note/unsaved_edit_warning.png.jpg" width="375" alt="Discard Progress Warning Modal"> |
-
+| <img src="app_screenshots/simply_note/otp_screen.png.jpg" width="188" alt="OTP Pin Entry Screen"> | <img src="app_screenshots/simply_note/unsaved_edit_warning.png.jpg" width="188" alt="Discard Progress Warning Modal"> |
 
 ## 📱 Overview
 
