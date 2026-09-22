@@ -67,17 +67,17 @@ class NoteController extends GetxController {
     required PickMediaUsecase pickMediaUsecase,
     required UploadMultipleMediaUsecase uploadMultipleMediaUsecase,
     required DeleteMediaUsecase deleteMediaUsecase,
-  })  : _deleteMediaUsecase = deleteMediaUsecase,
-        _pickMediaUsecase = pickMediaUsecase,
-        _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
-        _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
-        _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
-        _signOutUsecase = signOutUsecase,
-        _saveNoteUsecase = addNoteUsecase,
-        _getNotesUsecase = getNotesUsecase,
-        // _updateNoteUsecase = updateNoteUsecase,
-        _deleteNoteUsecase = deleteNoteUsecase,
-        _toggleImportantUsecase = toggleImportantUsecase;
+  }) : _deleteMediaUsecase = deleteMediaUsecase,
+       _pickMediaUsecase = pickMediaUsecase,
+       _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
+       _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
+       _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
+       _signOutUsecase = signOutUsecase,
+       _saveNoteUsecase = addNoteUsecase,
+       _getNotesUsecase = getNotesUsecase,
+       // _updateNoteUsecase = updateNoteUsecase,
+       _deleteNoteUsecase = deleteNoteUsecase,
+       _toggleImportantUsecase = toggleImportantUsecase;
 
   RxList<NoteEntity> noteList = <NoteEntity>[].obs;
   RxBool isLoading = false.obs;
@@ -167,42 +167,53 @@ class NoteController extends GetxController {
   // runs on every change for local DS Get Storage ,its fast and free
   // auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
   Future<void> saveCurrentNote() async {
-    // extract String from ctrl
-    final String currentTitle = titleController.text;
-    final String currentContent = contentController.text;
-    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
+    try {
+      // extract String from ctrl
+      isLoading.value = true;
+      errorMessage.value = '';
+      final String currentTitle = titleController.text;
+      final String currentContent = contentController.text;
+      final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
 
-    // Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
-    // Soc 1.validation 1.Actions
-    // let Back buttons handle the deleting action
-    if (currentTitle.trim().isEmpty &&
-        currentContent.trim().isEmpty &&
-        currentCloudMedia.isEmpty &&
-        selectedLocalMediaPaths.isEmpty) {
-      return;
-    }
+      // Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
+      // Soc 1.validation 1.Actions
+      // let Back buttons handle the deleting action
+      if (currentTitle.trim().isEmpty &&
+          currentContent.trim().isEmpty &&
+          currentCloudMedia.isEmpty &&
+          selectedLocalMediaPaths.isEmpty) {
+        return;
+      }
 
-    // Soc .Actions A.If new note,ADD(create) else B.Update
-    if (currentNote == null) {
-      currentNote = NoteEntity(
-        // first time , brand new note ->id,uid temporary empty ''
-        // NoteRDS firestore will asign id
-        id: '',
-        userId: userAuthId,
-        title: currentTitle,
-        content: currentContent,
-        createdAt: DateTime.now(),
-        isImportant: false,
+      // Soc .Actions A.If new note,ADD(create) else B.Update
+      if (currentNote == null) {
+        currentNote = NoteEntity(
+          // first time , brand new note ->id,uid temporary empty ''
+          // NoteRDS firestore will asign id
+          id: '',
+          userId: userAuthId,
+          title: currentTitle,
+          content: currentContent,
+          createdAt: DateTime.now(),
+          isImportant: false,
+        );
+        await saveNote(currentNote!, userAuthId);
+      } else {
+        currentNote = currentNote!.copyWith(
+          title: currentTitle,
+          content: currentContent,
+        );
+        // _noteController.updateNote(_currentNote!);
+        // saveNotes , single Upsert Method for RDS FireStore
+        await saveNote(currentNote!, userAuthId);
+      }
+    } catch (e) {
+      debugPrint(
+        'Error in Note ctr > saveCurrentNote ======> ${e.toString()} ',
       );
-      await saveNote(currentNote!, userAuthId);
-    } else {
-      currentNote = currentNote!.copyWith(
-        title: currentTitle,
-        content: currentContent,
-      );
-      // _noteController.updateNote(_currentNote!);
-      // saveNotes , single Upsert Method for RDS FireStore
-      await saveNote(currentNote!, userAuthId);
+      errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -306,7 +317,8 @@ class NoteController extends GetxController {
         url,
       ) {
         final isVideo =
-            url.toLowerCase().contains('.mp4') || url.toLowerCase().contains('.mov');
+            url.toLowerCase().contains('.mp4') ||
+            url.toLowerCase().contains('.mov');
         return MediaAttachmentNestedEntity(
           mediaType: isVideo ? NoteMediaType.video : NoteMediaType.image,
           mediaLink: url,

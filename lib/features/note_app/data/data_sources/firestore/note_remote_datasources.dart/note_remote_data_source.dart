@@ -73,9 +73,14 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
         'Note RDS >createNote ENDED $rawNote with id : ${rawNote['id']} is UPSERTED',
       );
     } on FirebaseException catch (e) {
-      debugPrint('Note RDS >createNote > FBException : $e');
+      debugPrint(
+        'Note RDS >saveNote > FirebaseException '
+        'code=${e.code} message=${e.message}',
+      );
+      rethrow;
     } catch (e) {
       debugPrint('Note RDS >saveNote > other Error : $e');
+      rethrow;
     }
   }
 
@@ -119,7 +124,7 @@ class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
         debugPrint(
           "NoteRds>getAllNotes> Stream updated: ${rawNotes.length} notes fetched from fireStore cache/online",
         );
-        
+
         return rawNotes; // This returns the List to the Stream.map
       });
 

@@ -1,4259 +1,3 @@
-﻿// --- File: main.dart ---
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get_navigation/src/root/get_material_app.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:note_app/core/bindings/initial_binding.dart';
-import 'package:note_app/core/routes/app_pages.dart';
-import 'package:note_app/core/routes/app_routes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-void main() async {
-  //since await before runApp,WFB.eI() ==> connect flutter framework(Dart code-wid ,ctr..)and Flutter Engine(C++: draws actual the pixel)
-  WidgetsFlutterBinding.ensureInitialized();
-
-  //start GetStor engine in phones hardware
-  await GetStorage.init();
-  //  Flip the Main Power Switch to turn on the Firebase Kitchen!
-  await Firebase.initializeApp();
-
-  await GoogleSignIn.instance.initialize();
-
-  //3 limitations:
-  //1) atleast one online fetch is req.(firstTime login & offline ->see nothing bcz no fetch before)
-  //2)sec rules apply edit discard :user1
-
-  FirebaseFirestore.instance.settings = Settings(
-    persistenceEnabled: true,
-
-    //optional
-    //byDeafault 40mb
-    //if exceeds limit, fireStroe delete older data(notes)
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
-
-  await Supabase.initialize(
-    url: "https://tryfzkjzywvgjiuopdpw.supabase.co",
-    publishableKey:
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeWZ6a2p6eXd2Z2ppdW9wZHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNjA2ODQsImV4cCI6MjEwMTczNjY4NH0.4BpbG1wYhlzbK9St1DllDwRqNL-dr2T6n0wuMzSHGPQ",
-  );
-
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Simply Note',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-
-      //first screen as app opens
-      initialRoute: AppRoutes.initial,
-
-      //point Routing
-      getPages: AppPages.pages,
-
-      //core checklist/binding .born as soon as app starts and lives till app life cycle
-      initialBinding: InitialBinding(),
-    );
-  }
-}
-
-
-
-// --- File: initial_binding.dart ---
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:note_app/core/services/local_storage_service.dart';
-import 'package:note_app/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:note_app/features/auth/data/repositories_impl/auth_repository_impl.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
-import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/send_otp_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/verify_otp_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/sign_in_anonymously.dart';
-import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
-
-class InitialBinding extends Bindings {
-  @override
-  void dependencies() {
-    //since Core, put Instance before app Created .
-    Get.put(StorageService());
-
-    //here is the 1st actual instance (FB.instance) .(source of Waterfall)
-    //else is waterfall
-
-    Get.put<FirebaseAuth>(FirebaseAuth.instance, permanent: true);
-    Get.put<GoogleSignIn>(GoogleSignIn.instance, permanent: true);
-    Get.put<AuthRemoteDatasource>(
-      AuthRemoteDatasourceImpl(
-        firebaseAuth: Get.find<FirebaseAuth>(),
-        googleSignIn: Get.find<GoogleSignIn>(),
-      ),
-      permanent: true,
-    );
-    Get.put<AuthRepository>(
-      AuthRepositoryImpl(authRemoteDS: Get.find<AuthRemoteDatasource>()),
-      permanent: true,
-    );
-    Get.put<SignUpUscecase>(
-      SignUpUscecase(authRepo: Get.find<AuthRepository>()),
-      permanent: true,
-    );
-    Get.put<SignInUsecase>(
-      SignInUsecase(authRepo: Get.find<AuthRepository>()),
-      permanent: true,
-    );
-    Get.put<SignOutUsecase>(
-      SignOutUsecase(authRepo: Get.find<AuthRepository>()),
-      permanent: true,
-    );
-    Get.put<DeleteAccountUsecase>(
-      DeleteAccountUsecase(authRepo: Get.find<AuthRepository>()),
-    );
-
-    Get.put<AuthStatusUsecase>(
-      AuthStatusUsecase(authRepo: Get.find<AuthRepository>()),
-    );
-
-    Get.put<GoogleSignInUsecase>(
-      GoogleSignInUsecase(authRepo: Get.find<AuthRepository>()),
-    );
-
-    Get.put<SendOtpUsecase>(
-      SendOtpUsecase(authRepository: Get.find<AuthRepository>()),
-    );
-
-    Get.put<VerifyOtpUsecase>(
-      VerifyOtpUsecase(authRepository: Get.find<AuthRepository>()),
-    );
-
-    Get.put<SignInAnonymouslyUsecase>(
-      SignInAnonymouslyUsecase(authRepo: Get.find<AuthRepository>()),
-    );
-    Get.put<AuthController>(
-      AuthController(
-        signUpUsecase: Get.find<SignUpUscecase>(),
-        signInUsecase: Get.find<SignInUsecase>(),
-        signOutUsecase: Get.find<SignOutUsecase>(),
-        deleteAccountUsecase: Get.find<DeleteAccountUsecase>(),
-        authStatusUsecase: Get.find<AuthStatusUsecase>(),
-        googleSignInUsecase: Get.find<GoogleSignInUsecase>(),
-        sendOtpUsecase: Get.find<SendOtpUsecase>(),
-        verifyOtpUsecase: Get.find<VerifyOtpUsecase>(),
-        signInAnonymouslyUsecase: Get.find<SignInAnonymouslyUsecase>(),
-      ),
-      permanent: true,
-    );
-  }
-}
-
-
-
-// --- File: image_assets_path.dart ---
-class ImageAssetsPath{
-  ImageAssetsPath._();
-  static const String simplyNoteAppLogo='assets/images/simply_note_logo.png';
-  static const String splashImage='assets/images/simply_note_splash_screen.png';
-}
-
-
-
-// --- File: app_pages.dart ---
-import 'package:get/get.dart';
-import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/auth/presentation/views/auth_view.dart';
-import 'package:note_app/features/auth/presentation/views/otp_view.dart';
-import 'package:note_app/features/note_app/presentation/bindings/note_binding.dart';
-import 'package:note_app/features/note_app/presentation/views/notes_view.dart';
-import 'package:note_app/features/note_app/presentation/views/edit_note_view.dart';
-import 'package:note_app/features/splash/presentation/bindings/splash_binding.dart';
-import 'package:note_app/features/splash/presentation/views/splash_view.dart';
-
-abstract class AppPages {
-  //priv constr
-  AppPages._();
-
-  
-
-  static final List<GetPage> pages = [
-    //feature specific ctr =>bind with Get page
-    //Global ctr (initBind) => Not here. bcz in main.
-    GetPage(name: AppRoutes.splash, page: () => const SplashView(),binding: SplashBinding()),
-    GetPage(name: AppRoutes.login, page: () =>  AuthView()),
-    GetPage(
-      name: AppRoutes.home,
-      //const bcz view doesn req var in construct.its const and known before app runs.
-      page: () => const NotesView(),
-      binding: NoteBinding(),
-    ),
-    GetPage(name: AppRoutes.editNote, page: () => const EditditNoteView()),
-    GetPage(name: AppRoutes.otpView, page: ()=> OtpView())
-  ];
-}
-
-
-
-// --- File: app_routes.dart ---
-abstract class AppRoutes {
-  //1 priv constructor to avoid instantiation which is redundant
-  AppRoutes._();
-
-  //var
-
-  static const String splash = '/splash';
-  static const String login = '/login';
-  static const String home = '/notes';
-  static const String editNote = '/edit-note';
-
-  //first screen of app
-  static const String initial = splash;
-
-  static const String otpView='/otp';
-}
-
-
-
-// --- File: local_storage_service.dart ---
-import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
-
-
-//core bcz more than on feature might use getSt serv: note app, user profile, to do list.etc
-//extending GetxService to tell flutter to KEEP IT PERMENANT (not temporary like a controller)
-class StorageService extends GetxService {
-
-
-//init storage
-  final _box = GetStorage();
-
-
-//dynamic bcz its core, any feature can use it accoriding to its  data requirements
-//we dont know what kind of data will be coming throu storage , its unsure.
-  dynamic readData(String key) {
-    return _box.read(key);
-  }
-
-  Future<void> writeData(String key, dynamic value) {
-    return _box.write(key, value);
-  }
-}
-
-
-
-// --- File: app_validators.dart ---
-class AppValidators {
-  static String? validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Email is required.';
-    }
-    final emailRegex = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-    if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address.';
-    }
-    return null;
-  }
-
-  static String? validatePassword(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Password is required.';
-    }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters long.';
-    }
-    return null;
-  }
-
-  static String? validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required.';
-    }
-    // Removes spaces and checks for 10-15 digits (accommodating country codes like +91)
-    final cleanPhone = value.trim().replaceAll(' ', '');
-    final phoneRegex = RegExp(r"^\+?[0-9]{10,15}$");
-    if (!phoneRegex.hasMatch(cleanPhone)) {
-      return 'Please enter a valid phone number.';
-    }
-    return null;
-  }
-
-  static String? validateOtp(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'OTP is required.';
-    }
-    if (value.length != 6) {
-      return 'OTP must be exactly 6 digits.';
-    }
-    return null;
-  }
-}
-
-
-
-// --- File: auth_remote_datasource.dart ---
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/widgets.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:note_app/features/auth/data/models/user_model.dart';
-
-//Dep Inv from SOLID
-abstract class AuthRemoteDatasource {
-  Future<UserModel> signUpWithEmail(String email, String password);
-  Future<UserModel> signInWithEmail(String email, String password);
-  Future<void> signOut();
-  Future<void> deleteAccount();
-  Future<UserModel> signInWithGoogle();
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required Function(String verificationId) onCodeSent,
-    required Function(String errorMessage) onVerificationFailed,
-  });
-
-  Future<UserModel> verifyOtp({
-    required String verificationId,
-    required String smsCode,
-    required String phoneNumber
-  });
-
-  Future<UserModel> signInAnonymously();
-  //null if SignOut or Delete. else user
-  Stream<UserModel?> get authStateStream;
-}
-
-class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
-  final FirebaseAuth _firebaseAuth;
-  final GoogleSignIn _googleSignIn;
-
-  //;oose coupling to mock Auth
-  AuthRemoteDatasourceImpl({
-    required FirebaseAuth firebaseAuth,
-    required GoogleSignIn googleSignIn,
-  }) : _firebaseAuth = firebaseAuth,
-       _googleSignIn = googleSignIn;
-
-  @override
-  Future<UserModel> signUpWithEmail(String email, String password) async {
-    //FBA built-in meth.gives UserCerdobject
-
-    try {
-      final UserCredential userCredential = await _firebaseAuth
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      //since ucerCred.user can be null , we have to you !Bang operator
-      //null check it before
-      //if user is null , but due to any issue server sent successful userCredential obj instead of throwing error.
-
-      if (userCredential.user == null) {
-        debugPrint("auth>data>signUp Error :  User is null");
-        throw Exception("Authentication failed: User is null");
-      }
-      final UserModel userModel = UserModel.fromFireBaseUser(
-        firebaseUser: userCredential.user!,
-      );
-      return userModel;
-    } on FirebaseAuthException catch (e) {
-      debugPrint("auth>data>signUp Firebase Error :$e");
-      rethrow;
-    } catch (e) {
-      debugPrint("auth>data>signUp catch Error :Data Processing Error");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<UserModel> signInWithEmail(String email, String password) async {
-    try {
-      final UserCredential userCredential = await _firebaseAuth
-          .signInWithEmailAndPassword(email: email, password: password);
-      if (userCredential.user == null) {
-        debugPrint("auth>data>signIn Error :  User is null");
-        throw Exception("Authentication failed :user is null");
-      }
-
-      final UserModel userModel = UserModel.fromFireBaseUser(
-        firebaseUser: userCredential.user!,
-      );
-      return userModel;
-    } on FirebaseAuthException catch (e) {
-      debugPrint("auth>data>signUp> error : $e");
-      rethrow;
-    } catch (e) {
-      debugPrint("auth>data>signUp> error : $e");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> signOut() async {
-    try {
-      final user = _firebaseAuth.currentUser;
-      if (user != null && user.isAnonymous) {
-        debugPrint(
-          "AuthRDS>signout>User is Anonymous , Deleting user from console",
-        );
-        await user.delete();
-      }
-      await _firebaseAuth.signOut();
-    } on FirebaseAuthException catch (e) {
-      debugPrint("auth>data>signOut > FB Exception :$e");
-      rethrow;
-    } catch (e) {
-      debugPrint("auth>data>signOut > Data processing error:$e");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> deleteAccount() async {
-    try {
-      //Delete requires current session , to avoid deleting from stolen phone
-      await _firebaseAuth.currentUser?.delete();
-    } on FirebaseAuthException catch (e) {
-      debugPrint('auth>data>deletAcc > FB Exception:$e');
-      rethrow;
-    } catch (e) {
-      debugPrint("auth>data>delete> error:$e");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<UserModel> signInWithGoogle() async {
-    try {
-      //1 trigger native UI
-      final GoogleSignInAccount? googleUser = await _googleSignIn
-          .authenticate();
-
-      //Null check since type is Nullable
-      if (googleUser == null) {
-        throw Exception("Google sign in aborted by user");
-      }
-      //2 token fetching (2.a ID - authen, 2.b access authoriz)
-
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final clientAuth = await googleUser.authorizationClient
-          .authorizationForScopes(['email', 'profile']);
-
-      if (clientAuth == null) {
-        throw Exception("User denied scopes/permissions");
-      }
-      final AuthCredential authCredential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-        accessToken: clientAuth.accessToken,
-      );
-
-      //4 hand the tokens packed in authCred wrapper to FB
-      final UserCredential userCredential = await _firebaseAuth
-          .signInWithCredential(authCredential);
-
-      if (userCredential.user == null) {
-        throw Exception('FireBase Auth failed : User is null');
-      }
-
-      //5 Data mapping and Modeling
-      final UserModel userModel = UserModel.fromFireBaseUser(
-        firebaseUser: userCredential.user!,
-      );
-
-      return userModel;
-    } catch (e) {
-      debugPrint("Auth>data>sinInWithGoogle>Error:$e");
-
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required Function(String verificationId) onCodeSent,
-    required Function(String errorMessage) onVerificationFailed,
-  }) async {
-    try {
-      debugPrint('AuthRDS>sendOTP>start');
-
-      await _firebaseAuth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          //if SMS auto Retrival by Android under 60 secs thhen directly verify it , no need of manual otp type page
-          try {
-            debugPrint(
-              'AuthRDS>sendOTP>number verification auto completed now directly signing with cred',
-            );
-            await _firebaseAuth.signInWithCredential(credential);
-          } on Exception catch (e) {
-            debugPrint(
-              'AuthRDS>sendOTP>caught error while signing in after auto sms code retrival:$e',
-            );
-            onVerificationFailed(e.toString());
-          }
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          onVerificationFailed(
-            e.message ?? "Verification failed",
-          ); //our call back in param
-        },
-
-        codeSent: (String verificationId, int? resendToken) {
-          onCodeSent(
-            verificationId,
-          ); //example nav to otp typ screen with verCode
-        },
-        codeAutoRetrievalTimeout:
-            (String verificationId) {}, //just wait for user to manually type
-      );
-    } catch (e) {
-      debugPrint('AuthRDS>sendOTP>caught error :$e');
-      rethrow;
-    }
-  }
-
-  @override
-  Future<UserModel> verifyOtp({
-    required String verificationId,
-    required String smsCode,
-    required String phoneNumber,
-  }) async {
-    try {
-      //wrap with this wrapper
-      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
-
-      final UserCredential userCredential = await _firebaseAuth
-          .signInWithCredential(credential);
-
-      if (userCredential.user == null) {
-        throw Exception("User is Null after verifying phone otp");
-      }
-
-      final UserModel userModel = UserModel.fromFireBaseUser(
-        firebaseUser: userCredential.user!,
-        verifiedPhone: phoneNumber,
-      );
-
-      return userModel;
-    } catch (e) {
-      debugPrint('AuthRDS>verifyOTP>caught error :$e');
-      rethrow;
-    }
-  }
-
-  @override
-  Future<UserModel> signInAnonymously() async {
-    try {
-      final UserCredential userCredential = await _firebaseAuth
-          .signInAnonymously();
-      if (userCredential.user == null) {
-        throw Exception(
-          'AuthRDS>signInAnonlymously>user sent by FBA UCred is null',
-        );
-      }
-
-      final UserModel userModel = UserModel.fromFireBaseUser(
-        firebaseUser: userCredential.user!,
-      );
-
-      return userModel;
-    } catch (e) {
-      debugPrint("AuthRDS>signInAnonymously>Error - ${e.toString()}");
-      rethrow;
-    }
-  }
-
-  @override
-  Stream<UserModel?> get authStateStream {
-    //raw stream of nullable FBUser sent by firebase
-    Stream<User?> firebaseUserStream = _firebaseAuth.authStateChanges();
-
-    //converting that stream into stream of nullable UserModel & store it in var
-    Stream<UserModel?> userModelStream = firebaseUserStream.map((
-      User? firebaseUser,
-    ) {
-      if (firebaseUser == null) {
-        return null;
-      }
-      return UserModel.fromFireBaseUser(firebaseUser: firebaseUser);
-    });
-
-    return userModelStream;
-  }
-}
-
-
-
-// --- File: user_model.dart ---
-//import pasckage "as" : to avoid naming collision btwn FB's User Class v/s your own class.
-import 'package:firebase_auth/firebase_auth.dart' as firebase;
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-
-class UserModel extends UserEntity {
-
-  UserModel({required super.id, required super.email,required super.phoneNumber});
-
-  factory UserModel.fromFireBaseUser({required firebase.User firebaseUser,String? verifiedPhone}) {
-    return UserModel(id: firebaseUser.uid, email: firebaseUser.email,phoneNumber: verifiedPhone);
-  }
-}
-
-
-
-// --- File: auth_repository_impl.dart ---
-import 'package:note_app/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-//Bubble err autom
-//bcz we dont have to do something with that here
-//UC<---repoImpl [Orchestrator] --->Multiple Datasource to full fill UC  req
-class AuthRepositoryImpl implements AuthRepository {
-  final AuthRemoteDatasource _authRemoteDatasource;
-
-  AuthRepositoryImpl({required AuthRemoteDatasource authRemoteDS})
-    : _authRemoteDatasource = authRemoteDS;
-  @override
-  Future<UserEntity> signUpWithEmailAndPassword({
-    required String email,
-    required String password,
-  }) async {
-    final UserEntity userEntity = await _authRemoteDatasource.signUpWithEmail(
-      email,
-      password,
-    );
-    return userEntity;
-  }
-
-  @override
-  Future<UserEntity> signInWithEmailAndPassword({
-    required String email,
-    required String password,
-  }) async {
-    UserEntity userEntity = await _authRemoteDatasource.signInWithEmail(
-      email,
-      password,
-    );
-    return userEntity;
-  }
-
-  @override
-  Future<void> signOut() {
-    return _authRemoteDatasource.signOut();
-  }
-
-  @override
-  Future<void> deleteAccount() {
-    return _authRemoteDatasource.deleteAccount();
-  }
-
-  @override
-  Stream<UserEntity?> get authStatusStream =>
-      _authRemoteDatasource.authStateStream;
-
-  @override
-  Future<UserEntity> signInWithGoogle() async {
-    final UserEntity userEntity = await _authRemoteDatasource
-        .signInWithGoogle();
-    return userEntity;
-  }
-
-  @override
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required Function(String verificationId) onCodeSent,
-    required Function(String errorMessage) onVerificationFailed,
-  }) {
-    return _authRemoteDatasource.sendOtp(
-      phoneNumber: phoneNumber,
-      onCodeSent: onCodeSent,
-      onVerificationFailed: onVerificationFailed,
-    );
-  }
-
-  @override
-  Future<UserEntity> verifyOtp({
-    required String verificationId,
-    required String smsCode,
-    required String phone,
-  }) async {
-    final UserEntity userEntity = await _authRemoteDatasource.verifyOtp(
-      verificationId: verificationId,
-      smsCode: smsCode,
-      phoneNumber: phone,
-    );
-    return userEntity;
-  }
-
-  @override
-  Future<UserEntity> signInAnonymously() async {
-    final UserEntity userEntity = await _authRemoteDatasource
-        .signInAnonymously();
-
-    return userEntity;
-  }
-}
-
-
-
-// --- File: user_entity.dart ---
-
-
-class UserEntity {
-  //Baas assign id to user.
-  //FB called it uid;
-  final String id;
-
-  //Data Integrity - Truth is preserve
-  //helps to keep One unified Entity rather than seperate for each sub-feature
-  final String? email; 
-
-  final String? phoneNumber;
-
-  UserEntity({required this.id, required this.email, this.phoneNumber});
-}
-
-
-
-// --- File: auth_repository.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-
-abstract class AuthRepository {
-  Future<UserEntity> signUpWithEmailAndPassword({
-    required String email,
-    required String password,
-  });
-
-  Future<UserEntity> signInWithEmailAndPassword({
-    required String email,
-    required String password,
-  });
-
-  Future<UserEntity> signInWithGoogle();
-
-  
-
-  Future<void> signOut();
-
-  Future<void> deleteAccount();
-
-  Stream<UserEntity?> get authStatusStream;
-
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required Function(String verificationId)
-    onCodeSent, //nav to otp filling page
-    required Function(String errorMessage)
-    onVerificationFailed, //if phone number invalid
-  });
-
-  //rule for verifying otp
-  Future<UserEntity> verifyOtp({
-    required String verificationId,
-    required String smsCode, //otp
-    required String phone
-  }); 
-
-  Future<UserEntity> signInAnonymously();
-}
-
-
-
-// --- File: auth_status_usecases.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class AuthStatusUsecase {
-  final AuthRepository _authRepository;
-
-  AuthStatusUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Stream<UserEntity?> call() {
-    return _authRepository.authStatusStream;
-  }
-}
-
-
-
-// --- File: google_sign_in_usecase.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class GoogleSignInUsecase {
-  final AuthRepository _authRepository;
-
-  GoogleSignInUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<UserEntity> call() async {
-    return await _authRepository.signInWithGoogle();
-  }
-}
-
-
-
-// --- File: sign_in_anonymously.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class SignInAnonymouslyUsecase {
-  final AuthRepository _authRepository;
-  SignInAnonymouslyUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<UserEntity> signInAnonymouslyUseCase() async {
-    return await _authRepository.signInAnonymously();
-  }
-}
-
-
-
-// --- File: delete_account_usercase.dart ---
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class DeleteAccountUsecase {
-  final AuthRepository _authRepository;
-
-  DeleteAccountUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<void> call() async {
-    return await _authRepository.deleteAccount();
-  }
-}
-
-
-
-// --- File: sign_in_usecase.dart ---
-
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class SignInUsecase {
-  final AuthRepository _authRepository;
-
-  SignInUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<UserEntity> call({
-    required String email,
-    required String password,
-  }) async {
-    final UserEntity userEntity = await _authRepository
-        .signInWithEmailAndPassword(email: email, password: password);
-
-    return userEntity;
-  }
-}
-
-
-
-// --- File: sign_out_usecase.dart ---
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class SignOutUsecase {
-  final AuthRepository _authRepository;
-
-  SignOutUsecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<void> call() async {
-    return await _authRepository.signOut();
-  }
-}
-
-
-
-// --- File: sign_up_uscecase.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-//single action a user can take
-//Business logic defined here: (if not here then ctr bloat)
-//Example : DS mixing (store Ucred in local db as soon as fetched)
-//talk only to repo
-//Single Responsibility Principle (SOLID)
-
-class SignUpUscecase {
-  final AuthRepository _authRepository;
-  SignUpUscecase({required AuthRepository authRepo})
-    : _authRepository = authRepo;
-
-  Future<UserEntity> call({
-    required String email,
-    required String password,
-  }) async {
-    final UserEntity userentity = await _authRepository
-        .signUpWithEmailAndPassword(email: email, password: password);
-
-    return userentity;
-  }
-}
-
-
-
-// --- File: send_otp_usecase.dart ---
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class SendOtpUsecase {
-  final AuthRepository _authRepository;
-  SendOtpUsecase({required AuthRepository authRepository})
-    : _authRepository = authRepository;
-
-  Future<void> call({
-    required String phoneNumber,
-    required Function(String verificationId) onCodeSent,
-    required Function(String errorMessage) onVerificationFailed,
-  }) {
-    return _authRepository.sendOtp(
-      phoneNumber: phoneNumber,
-      onCodeSent: onCodeSent,
-      onVerificationFailed: onVerificationFailed,
-    );
-  }
-}
-
-
-
-// --- File: verify_otp_usecase.dart ---
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/repositories/auth_repository.dart';
-
-class VerifyOtpUsecase {
-  final AuthRepository _authRepository;
-  VerifyOtpUsecase({required AuthRepository authRepository})
-    : _authRepository = authRepository;
-
-  Future<UserEntity> call({
-    required String verificationId,
-    required String smsCode,
-    required String verifiedPhone
-  }) {
-    return _authRepository.verifyOtp(
-      verificationId: verificationId,
-      smsCode: smsCode, phone: verifiedPhone,
-    );
-  }
-}
-
-
-
-// --- File: auth_controller.dart ---
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
-import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/auth/domain/entity/user_entity.dart';
-import 'package:note_app/features/auth/domain/usecases/auth_status_usecases.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/delete_account_usercase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_in_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_up_uscecase.dart';
-import 'package:note_app/features/auth/domain/usecases/google_sign_in_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/send_otp_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/phone_otp_usecases/verify_otp_usecase.dart';
-import 'package:note_app/features/auth/domain/usecases/sign_in_anonymously.dart';
-
-class AuthController extends GetxController {
-  final SignUpUscecase _signUpUscecase;
-  final SignInUsecase _signInUsecase;
-  final SignOutUsecase _signOutUsecase;
-  final DeleteAccountUsecase _deleteAccountUsercase;
-  final AuthStatusUsecase _authStatusUsecase;
-  final GoogleSignInUsecase _googleSignInUsecase;
-  final SendOtpUsecase _sendOtpUsecase;
-  final VerifyOtpUsecase _verifyOtpUsecase;
-  final SignInAnonymouslyUsecase _signInAnonymouslyUsecase;
-
-  AuthController({
-    required SignUpUscecase signUpUsecase,
-    required SignInUsecase signInUsecase,
-    required SignOutUsecase signOutUsecase,
-    required DeleteAccountUsecase deleteAccountUsecase,
-    required AuthStatusUsecase authStatusUsecase,
-    required GoogleSignInUsecase googleSignInUsecase,
-    required SendOtpUsecase sendOtpUsecase,
-    required VerifyOtpUsecase verifyOtpUsecase,
-    required SignInAnonymouslyUsecase signInAnonymouslyUsecase,
-  }) : _authStatusUsecase = authStatusUsecase,
-       _signUpUscecase = signUpUsecase,
-       _signInUsecase = signInUsecase,
-       _signOutUsecase = signOutUsecase,
-       _deleteAccountUsercase = deleteAccountUsecase,
-       _googleSignInUsecase = googleSignInUsecase,
-       _sendOtpUsecase = sendOtpUsecase,
-       _verifyOtpUsecase = verifyOtpUsecase,
-       _signInAnonymouslyUsecase = signInAnonymouslyUsecase;
-
-  RxBool isLoading = false.obs;
-  RxString errorMessage = ''.obs;
-
-  //type cast with =<> , and init with null(first time app open or after sign out or delete).
-  Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
-  RxString verificationId = ''.obs;
-
-  /* @override
-  void onInit() {
-    super.onInit();
-
-    //1st ensure currUser Rx var is tiead/joined to fb>DM>UEn? (from UC)Stream
-
-
-//Challenge Error Learning:
-//Null-To-Null Trap , to be efficient and have Best performance
-//GetX donot updates its Rx Var if old==new (Rx deaf <>(Null) == fb new null)
-//there sore custom Nav Func not called by 'ever' since no change
-////Nav screen Stuck
-///SOLUTION:Dart inbuilt .listen method to listen which byPass this == rule
-///   
-    
-    //currentUser.bindStream(_authStatusUsecase.call());
-  } */
-
-  @override
-  void onReady() {
-    super.onReady();
-
-    //Null to Null error:so this is cancelled
-    //in dish stack we cannot add a half incomplete dish
-    //ensure dish is completely made the add/remove
-    //Ensure Page is ready and then only do Navigation<-- custom func
-
-    //ever(currentUser, _setInitialScreen);
-
-    //Dart listener:
-
-    _authStatusUsecase.call().listen((UserEntity? userEntity) {
-      debugPrint('change listned in aut ctr>._authStUC.listen');
-      currentUser.value = userEntity;
-      _setInitialScreen(userEntity);
-    });
-  }
-
-  //custom function to route according to auth Status
-  void _setInitialScreen(UserEntity? userEntity) {
-   Timer(const Duration(seconds: 3), (){ if (userEntity == null) {
-      debugPrint("Auth Stream: User is null -> Routing to Login");
-      Get.offAllNamed(AppRoutes.login);
-    } else {
-      debugPrint("Auth Stream: User active -> Routing to Home");
-      Get.offAllNamed(AppRoutes.home);
-    }});
-  }
-
-  //using Try-Catch since we have to do some thing with that error (errmsg ,snackB), not just bubble up.
-  Future<void> signUp({required String email, required String password}) async {
-    try {
-      errorMessage.value = '';
-      isLoading.value = true;
-
-      debugPrint('auth>presentation>ctrl>SignUp Started');
-
-      final UserEntity user = await _signUpUscecase.call(
-        email: email,
-        password: password,
-      );
-      currentUser.value = user;
-
-      Get.snackbar(
-        "Account created",
-        'Welcome to Note App',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      debugPrint("Auth>pres>ctr>sign up SUCCESSFUL : email : ${user.email} ");
-
-      isLoading.value = false;
-    } catch (e) {
-      debugPrint("Caught Exception in auth ctr signUP : $e");
-
-      errorMessage.value = e.toString();
-
-      Get.snackbar(
-        "Sign-up failed!",
-        'Error:$errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> signIn({required String email, required String password}) async {
-    try {
-      errorMessage.value = '';
-      isLoading.value = true;
-
-      debugPrint('auth>presentation>ctrl>SignIn Started');
-
-      final user = await _signInUsecase.call(email: email, password: password);
-
-      currentUser.value = user;
-
-      Get.snackbar(
-        "Sign-in Successful",
-        'Welcome Back to Note App',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
-      debugPrint("auth>pres>ctrl>signIn Successfull : $currentUser");
-    } catch (e) {
-      debugPrint("Error: $e");
-      errorMessage.value = e.toString();
-      Get.snackbar(
-        "Sign-in failed!",
-        'Error:$errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> signOut() async {
-    try {
-      debugPrint("auth>ctrl>signOut Starting");
-      await _signOutUsecase.call();
-
-      //State clear from UI variable currentUser . if not then flutter thinks there's user still alive and stuck on HomeScreen.
-      currentUser.value = null;
-
-      debugPrint("signOut Successful");
-
-      Get.snackbar(
-        "Signed Out",
-        'See you soon',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } catch (e) {
-      debugPrint("Error:$e");
-      errorMessage.value = e.toString();
-      Get.snackbar(
-        "Sign-out failed!",
-        'Error:$errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> deleteAccount() async {
-    try {
-      errorMessage.value = '';
-      isLoading.value = true;
-
-      debugPrint("Auth>pres>ctr>Delete() Started");
-      await _deleteAccountUsercase.call();
-      debugPrint("Deleted Successfully");
-
-      //State Clearance
-      currentUser.value = null;
-
-      Get.snackbar("Account deleted", '', snackPosition: SnackPosition.BOTTOM);
-    } catch (e) {
-      debugPrint("Error :$e");
-      errorMessage.value = e.toString();
-      Get.snackbar(
-        "Deleting failed!",
-        'Error:$errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> googleSignIn() async {
-    try {
-      debugPrint("auth>pres>ctrl>googleSignIn started");
-      isLoading.value = true;
-      errorMessage.value = '';
-
-      final UserEntity user = await _googleSignInUsecase.call();
-      currentUser.value = user;
-      Get.snackbar(
-        "Google Sign-In Successful",
-        'Welcome Back, ${user.email}!',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
-      debugPrint("auth>pres>ctrl>googleSignIn Successful : ${user.email}");
-    } catch (e) {
-      errorMessage.value = e.toString();
-      debugPrint("auth>pres>ctrl>googleSignIn catched Error :$e");
-      Get.snackbar(
-        "Google Sign-In failed!",
-        'Error: $errorMessage',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  //since send otp has callbacks that would terminate at different point of time,
-  //we've puten isLoading false at their respective termination points
-  //not pn finally
-  Future<void> sendOtp(String phoneNumber) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      debugPrint("Auth>pres>ctrl>sendOtp started for $phoneNumber");
-
-      await _sendOtpUsecase.call(
-        phoneNumber: phoneNumber,
-        onCodeSent: (String verId) {
-          debugPrint("Auth>pres>ctrl>OTP Sent! Ticket ID: $verId");
-          verificationId.value = verId;
-          isLoading.value = false;
-          Get.snackbar(
-            "OTP sent",
-            "Please check your phone for 6-digit code",
-            snackPosition: SnackPosition.BOTTOM,
-          );
-          Get.toNamed(AppRoutes.otpView,arguments: phoneNumber);
-        },
-        onVerificationFailed: (String errorMsg) {
-          debugPrint("Auth>pres>ctrl>sendOtp Failed: $errorMsg");
-          isLoading.value = false;
-          errorMessage.value = errorMsg;
-          Get.snackbar(
-            "Verification Failed",
-            errorMsg,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        },
-      );
-    } catch (e) {
-      debugPrint("Auth>pres>ctrl>sendOtp Exception: $e");
-      isLoading.value = false;
-      errorMessage.value = e.toString();
-      Get.snackbar(
-        "Error",
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
-
-  //no callbacks here , execute chronologcal therefore finally here.
-  Future<void> verifyOtp({required String smsCode, required String phone}) async {
-    try {
-      errorMessage.value = '';
-      isLoading.value = true;
-      debugPrint("Auth>pres>ctrl>verifyOtp started with code: $smsCode");
-
-      if (verificationId.value.isEmpty) {
-        throw Exception("Session expired : please request new otp");
-      }
-
-      final UserEntity userEntity = await _verifyOtpUsecase(
-        smsCode: smsCode,
-        verificationId: verificationId.value,
-        verifiedPhone: phone
-      );
-
-      currentUser.value = userEntity;
-
-      Get.snackbar(
-        "Phone $phone Verified",
-        "Welcome to Note App",
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
-      debugPrint(
-        "Auth>pres>ctrl>verifyOtp Successful for user: ${userEntity.id}",
-      );
-    } catch (e) {
-      debugPrint("Auth>pres>ctrl>verifyOtp Exception: $e");
-      isLoading.value = false;
-      errorMessage.value = e.toString();
-
-      Get.snackbar(
-        "Error",
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      debugPrint(
-        "Auth>pres>ctrl>verifyOtp finally >Exception: ${errorMessage.value}",
-      );
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> signInAnonymously() async {
-    try {
-      debugPrint('auth ctr>signInAnonymously>started');
-      isLoading.value = true;
-      errorMessage.value = "";
-      UserEntity userEntity = await _signInAnonymouslyUsecase
-          .signInAnonymouslyUseCase();
-
-      currentUser.value = userEntity;
-      debugPrint('auth ctr>signInAnonymously>successful $userEntity ');
-    } catch (e) {
-      debugPrint('auth ctr>signInAnonymously>catched Error ==> $e');
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-}
-
-
-
-// --- File: auth_view.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../controllers/auth_controller.dart';
-
-class AuthView extends GetView<AuthController> {
-  AuthView({super.key});
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-
-              // --- HEADER SECTION ---
-              const Text(
-                'Note.',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 42,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -2.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Capture thoughts. Clean & simple.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // --- EMAIL & PASSWORD INPUTS ---
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: 'Email address',
-                  hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // EMAIL SIGN IN / SIGN UP BUTTONS
-              Obx(() => Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: /* controller.isLoading.value
-                          ? null
-                          : */ () {
-                              controller.signIn(
-                                email: _emailController.text.trim(),
-                                password: _passwordController.text.trim(),
-                              );
-                            },
-                      child: /* controller.isLoading.value
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : */ const Text(
-                              'Sign In',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Colors.black, width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: controller.isLoading.value
-                          ? null
-                          : () {
-                              controller.signUp(
-                                email: _emailController.text.trim(),
-                                password: _passwordController.text.trim(),
-                              );
-                            },
-                      child: const Text(
-                        'Register',
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              )),
-
-              const SizedBox(height: 32),
-
-              // --- DIVIDER ---
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'OR',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
-              // --- PHONE AUTH INPUT ---
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: '+91 9999999999',
-                  hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextButton(
-                      onPressed: () {
-                        if (_phoneController.text.trim().isNotEmpty) {
-                          controller.sendOtp(_phoneController.text.trim());
-                        }
-                      },
-                      child: const Text(
-                        'Send OTP',
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // --- GOOGLE SIGN IN BUTTON ---
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey.shade300, width: 1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  icon: const Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.black),
-                  label: const Text(
-                    'Continue with Google',
-                    style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  onPressed: () => controller.googleSignIn(),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // --- GUEST LOGIN BUTTON ---
-              Center(
-                child: TextButton(
-                  onPressed: () => controller.signInAnonymously(),
-                  child: Text(
-                    'Continue as Guest',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-
-// --- File: otp_view.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../controllers/auth_controller.dart';
-
-class OtpView extends GetView<AuthController> {
-  OtpView({super.key});
-
-  final TextEditingController _otpController = TextEditingController();
-  final String phoneNumber=Get.arguments as String;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.black,
-            size: 22,
-          ),
-          onPressed: () => Get.back(),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            const Text(
-              'Verify OTP',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Type the 6-digit verification code sent to your mobile phone.',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            // OTP TEXT FIELD
-            TextField(
-              controller: _otpController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 12.0,
-              ),
-              decoration: InputDecoration(
-                counterText: "", // Hides character counter bottom-right
-                hintText: '000000',
-                hintStyle: TextStyle(
-                  color: Colors.grey.shade300,
-                  letterSpacing: 12.0,
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // SUBMIT BUTTON
-            Obx(
-              () => SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: controller.isLoading.value
-                      ? null
-                      : () {
-                          final String code = _otpController.text.trim();
-                          if (code.length == 6) {
-                            debugPrint("[UI] Confirming OTP verification");
-                            controller.verifyOtp(smsCode: code,phone: phoneNumber);
-                          } else {
-                            Get.snackbar(
-                              "Invalid OTP",
-                              "Please enter a complete 6-digit code.",
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                          }
-                        },
-                  child: controller.isLoading.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Verify & Continue',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-
-// --- File: get_storage.dart ---
-
-
-
-// --- File: media_local_datasource.dart ---
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-import 'package:image_picker/image_picker.dart';
-
-abstract class MediaLocalDatasource {
-  Future<List<String>> pickMedia({
-    required NoteMediaSource mediaSource,
-    required NoteMediaType mediaType,
-  });
-}
-
-class MediaLocalDatasourceImpl implements MediaLocalDatasource {
-  final ImagePicker _imagePicker;
-
-  MediaLocalDatasourceImpl({required ImagePicker imagePicker})
-    : _imagePicker = imagePicker;
-
-  @override
-  Future<List<String>> pickMedia({
-    required NoteMediaSource mediaSource,
-    required NoteMediaType mediaType,
-  }) async {
-    List<String> rawPaths = [];
-    if (mediaSource == NoteMediaSource.camera) {
-      if (mediaType == NoteMediaType.image) {
-        //native os limitation , only one photo capture
-        final XFile? image = await _imagePicker.pickImage(
-          source: ImageSource.camera,
-        );
-
-        //since single(.add) nullable (user Discards process) Xfile
-        //null check
-        if (image != null) rawPaths.add(image.path);
-      } else {
-        //deafault remaining Vid
-        final XFile? video = await _imagePicker.pickVideo(
-          source: ImageSource.camera,
-        );
-        if (video != null) rawPaths.add(video.path);
-      }
-    } else if (mediaSource == NoteMediaSource.gallery) {
-      //if user discards then insted of null, we're handed an Empty list
-      //so Null check req
-      //emp list is added to deafault empty list
-
-      if (mediaType == NoteMediaType.image) {
-        final List<XFile> images = await _imagePicker.pickMultiImage();
-        rawPaths.addAll(images.map((file) => file.path));
-      } else if (mediaType == NoteMediaType.video) {
-        final List<XFile> videos = await _imagePicker.pickMultiVideo();
-        rawPaths.addAll(videos.map((file) => file.path));
-      } else if (mediaType == NoteMediaType.any) {
-        final List<XFile> mixedMedia = await _imagePicker.pickMultipleMedia();
-        rawPaths.addAll(mixedMedia.map((file) => file.path));
-      }
-    }
-
-    return rawPaths;
-  }
-}
-
-
-
-// --- File: note_remote_datasources.dart ---
-
-
-
-// --- File: media_remote_datasource.dart ---
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-abstract class MediaRemoteDatasource {
-  Future<String> uploadMedia({
-    required String localPath,
-    required String userAuthId,
-  });
-
-  Future<void> deleteMedia({required List<String> publicUrls});
-}
-
-class MediaRemoteDatasourceImpl implements MediaRemoteDatasource {
-  final SupabaseClient _supabaseClient;
-  final String supabaseBucketName = 'note_media';
-
-  MediaRemoteDatasourceImpl({required SupabaseClient supabaseClient})
-    : _supabaseClient = supabaseClient;
-
-  @override
-  Future<String> uploadMedia({
-    required String localPath,
-    required String userAuthId,
-  }) async {
-    try {
-      debugPrint('Media RDS Started');
-      //1 extract extension
-      final String extension = localPath.split('.').last;
-
-      //2 fileName (DateTime now msEpoch bcz make filepath unguessable)
-      final String fileName =
-          'media_${DateTime.now().millisecondsSinceEpoch}.$extension';
-
-      //3 folder pat inside cloud supabase bucket storage
-      final String storagePath = 'users/$userAuthId/notes_media/$fileName';
-
-      //4 extract dart file from locPath
-      final file = File(localPath);
-
-      //5 5save  to bucket
-      await _supabaseClient.storage
-          .from(supabaseBucketName)
-          .upload(storagePath, file);
-
-      //6 get Link
-      String publicUrl = _supabaseClient.storage
-          .from(supabaseBucketName)
-          .getPublicUrl(storagePath);
-
-      debugPrint(
-        'Media RDS Successful,single media uploaded passing publicURL to repoImpl',
-      );
-      return publicUrl;
-    } catch (e) {
-      debugPrint('MediaRDS>uploadMedia>caught error > $e');
-      // If the internet drops or the bucket doesn't exist, we catch the error
-      throw Exception('Failed to upload media to Supabase: $e');
-    }
-  }
-
-  @override
-  Future<void> deleteMedia({required List<String> publicUrls}) async {
-    try {
-      debugPrint('MediaRDS > deleteMediaFiles Started ================');
-      final List<String> storagePathsToDelete = publicUrls.map((url) {
-        //specify BucketPath (bcz we already know buck Name)
-        final String bucketPath = '/$supabaseBucketName/';
-        final int startIndexOfStoragePath =
-            url.indexOf(bucketPath) + bucketPath.length;
-        return url.substring(startIndexOfStoragePath);
-      }).toList();
-
-      debugPrint(
-        'MediaRDS > deleteMediaFiles > ${storagePathsToDelete.length} storage paths to delete',
-      );
-      await _supabaseClient.storage
-          .from(supabaseBucketName)
-          .remove(storagePathsToDelete);
-
-      debugPrint('MediaRDS > deleteMediaFiles > Deletd paths Successfully');
-    } catch (e) {
-      debugPrint('MediaRDS > deleteMediaFiles > caught error > $e');
-      throw Exception('Failed to delete media from Supabase: $e');
-    }
-  }
-}
-
-
-
-// --- File: note_remote_data_source.dart ---
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-
-abstract class NoteRemoteDataSource {
-  //save
-  Future<void> saveNote(Map<String, dynamic> rawNote);
-
-  //fetch
-  Stream<List<Map<String, dynamic>>> getAllNotes();
-  Future<void> deleteNote(String noteId);
-
-  //check User Offline (if waiting For Pending offline notes(FireStore Off feat) took more than 3 seconds)
-  Future<void> waitForNoteWrites();
-
-  //clear if online (waiting stoped before 3 sec->notes stored online->clear offline cache [bcz we need to signout]).
-  Future<void> clearLocalNoteCache();
-}
-
-class NoteRemoteDataSourceImpl implements NoteRemoteDataSource {
-  static const String _collectionName = 'notes';
-  final FirebaseFirestore _firebaseFirestore;
-
-  NoteRemoteDataSourceImpl({required FirebaseFirestore firebasefireStore})
-    : _firebaseFirestore = firebasefireStore;
-
-  CollectionReference<Map<String, dynamic>> get _notescollection =>
-      _firebaseFirestore.collection(_collectionName);
-
-  @override
-  Future<void> saveNote(Map<String, dynamic> rawNote) async {
-    try {
-      debugPrint('=== Note RDS >saveNote Started ====');
-
-      //extract id from Map
-      String noteId = rawNote['id'] as String;
-
-      //since fireStore provides id gen functionality
-      //no need of extra uuid package now
-      if (noteId.trim().isEmpty) {
-        //if its brand new note , empt ids
-        //gen
-        //save noteId in var
-        noteId = _notescollection.doc().id;
-
-        //inject the fs generated id (for note ID) in Raw note
-        rawNote['id'] = noteId;
-      }
-
-      // #Upsert behavior
-      //check whether rawNote doc with that specific noteid
-      //if present , take that doc ref
-      //if not present, set with create a new one
-      //<Map> bcz we specify what is core thing firestore will send us.
-      //Box>env>letter (Map) .we didnt specify box
-      final DocumentReference<Map<String, dynamic>> docRef = _notescollection
-          .doc(noteId);
-
-      //create note if not existed on that doc ref (or) update existing one
-      //just perform action , no return
-      await docRef
-          .set(rawNote)
-          .timeout(
-            Duration(seconds: 3),
-            onTimeout: () {
-              //we trust fireStore online persistance feat to save notes on reconnect.
-              debugPrint("Note saved locally. Will sync to cloud when online.");
-              return;
-            },
-          );
-
-      debugPrint(
-        'Note RDS >createNote ENDED $rawNote with id : ${rawNote['id']} is UPSERTED',
-      );
-    } on FirebaseException catch (e) {
-      debugPrint('Note RDS >createNote > FBException : $e');
-    } catch (e) {
-      debugPrint('Note RDS >saveNote > other Error : $e');
-    }
-  }
-
-  @override
-  Stream<List<Map<String, dynamic>>> getAllNotes() {
-    try {
-      debugPrint("NoteRDS>getAllNotes>Started======");
-
-      //fetch curren user Auth ID (fetch only that list of notes where authId matches)
-      final String currentUserAuthId = FirebaseAuth.instance.currentUser!.uid;
-
-      //Integrating FireStore Offline persistence feature:
-      //instead of .get (fetch from online db only .await and returning future)
-      //use .snapShots (before making network call first fetch from offline cache & its stream)
-
-      //notesCollRef will give -->colln obj(query snapshot)
-      //give list of QDocSnp>each QDS contain map<>
-      //so -->map<> directly
-      //.sort --> sort by this key (String[Alpha],int [Numerically],dateTime.now()[Timestamp])
-      final Stream<QuerySnapshot<Map<String, dynamic>>> querySnapShotStream =
-          _notescollection
-              .where('userId', isEqualTo: currentUserAuthId)
-              .orderBy('createdAt', descending: true)
-              .snapshots();
-      //.get();
-
-      //QS > List QDSnp : map -- each QDsn  -- raw map --.tolist
-      //.docs not defined for stream .cant perform on stream
-      //querySnapShotstream->map->querSnapShot->.docs gives list of docs->map docList->doc.data actual map -> toList
-      //return this rawNoteList to main querySnapShot Stream.map
-      // 3. Map the Firestore Stream to your custom Stream
-      final Stream<List<Map<String, dynamic>>>
-      rawNotesListStream = querySnapShotStream.map((querySnapShot) {
-        // Since we typed the collection, querySnapShot.docs already knows its type.
-        // We can cleanly map it without forced casts ('as Map<String, dynamic>').
-        final List<Map<String, dynamic>> rawNotes = querySnapShot.docs
-            .map((queryDoc) => queryDoc.data())
-            .toList();
-
-        // 4. MOVED the length print inside the map. (You can't call .length on a Stream)
-        debugPrint(
-          "NoteRds>getAllNotes> Stream updated: ${rawNotes.length} notes fetched from fireStore cache/online",
-        );
-        
-        return rawNotes; // This returns the List to the Stream.map
-      });
-
-      // 5. Return the fully mapped stream to the Controller
-
-      return rawNotesListStream;
-    } on FirebaseException catch (e) {
-      debugPrint("NoteRDS>getAllNotes caught FireBase exception > $e");
-      rethrow;
-    } catch (e) {
-      debugPrint(
-        "NoteRds>getAllNotes caught Exception (other that FireBase Exc) :$e",
-      );
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> deleteNote(String noteId) async {
-    try {
-      debugPrint("NoteRDS>deleteNote>Started======");
-
-      //get the doc Ref
-      final DocumentReference docRef = _notescollection.doc(noteId);
-
-      await docRef.delete().timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {
-          debugPrint("Note deleted locally. Will sync to cloud when online.");
-          return;
-        },
-      );
-      ;
-
-      debugPrint('[Firestore] Successfully deleted note with ID: $noteId');
-    } on FirebaseException catch (e) {
-      debugPrint("NoteRDS>delete Note caught FireBase exception > $e");
-      rethrow;
-    } catch (e) {
-      debugPrint(
-        "NoteRds>deleteNote caught Exception (other that FireBase Exc) :$e",
-      );
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> waitForNoteWrites() async {
-    //since we clicked save button->FS trying to save notes ->if offline , cached .
-    //after cache still wait for internet->we wait for pending writes , if more than 3 seconds
-    //.timeOut Throws TimeOut error
-    await _firebaseFirestore.waitForPendingWrites().timeout(
-      Duration(seconds: 3),
-    );
-  }
-
-  //clear in NoteViewctr noteViewSignOut after successfully notes pushed/saved online
-  @override
-  Future<void> clearLocalNoteCache() async {
-    try {
-      //!st terminate the fireStore off feat which is trying to save notes checking for reconnect
-      //bcz user chosen to force signout , discarding edits
-
-      await FirebaseFirestore.instance.terminate();
-      // 2. NOW it is safe to clear the offline data
-      await FirebaseFirestore.instance.clearPersistence();
-    } catch (e) {
-      debugPrint("Error clearing cache: $e");
-      throw Exception(e);
-    }
-  }
-}
-
-
-
-// --- File: note_local_datasource.dart ---
-import 'package:flutter/material.dart';
-import 'package:note_app/core/services/local_storage_service.dart';
-// NoteEntity import removed! LDS shouldn't know about Entities.
-
-class NoteLocalDataSource {
-  final StorageService _storageService;
-  static const String _noteKey = 'MY_NOTES_DATABASE';
-
-  NoteLocalDataSource({required StorageService storageService})
-    : _storageService = storageService;
-
-  // FIX: Changed return type to List<dynamic>? because it reads raw JSON from storage
-  List<dynamic>? getNotesFromStorage() {
-    try {
-      return _storageService.readData(_noteKey);
-    } catch (e) {
-      debugPrint("note_app>data>note_local_data_source>getNotes : ERROR ==> $e");
-      rethrow;
-    }
-  }
-
-  Future<void> saveNotesToStorage(List<Map<String,dynamic>> rawNotesList) async {
-    try {
-      if (rawNotesList.isNotEmpty) {
-        debugPrint(
-          'LDS -> saveNotesToStorage -> Latest note title is -> ${rawNotesList[0]['title']}',
-        ); 
-      }
-      await _storageService.writeData(_noteKey, rawNotesList);
-    } catch (e) {
-      debugPrint("note_app>data>note_local_data_source>saveNotes : ERROR ==> $e");
-      rethrow;
-    }
-  }
-}
-
-
-
-// --- File: note_model.dart ---
-import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-
-class NoteModel extends NoteEntity {
-  NoteModel({
-    required super.id,
-    required super.userId,
-    required super.title,
-    required super.content,
-    required super.createdAt,
-    required super.isImportant,
-    required super.mediaAttachments,
-  });
-
-  // 1. JSON Deserialization (Map -> Model)
-  factory NoteModel.fromJson(Map<String, dynamic> json) {
-    return NoteModel(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      title: json['title'] as String,
-      content: json['content'] as String,
-
-      // JSON doesn't understand DateTime, so we parse the String back into a DateTime object
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      isImportant: json['isImportant'] as bool,
-      // Used in  Repository when saving data from the UI down to the FireStore NoteRDS database
-      //### ADDED NULL CHECK bcz old notes (before attachment feat doesnt have medAtt arg)
-      //there fore null check eventhough new entity has this.medAtt=[] fallBack
-      //if not null=> listOfMedAtt :or if null then [] 
-      mediaAttachments: json['mediaAttachments'] != null
-          ? (json['mediaAttachments'] as List)
-                .map((json) => MediaAttachmentNestedEntity.fromJson(json: json))
-                .toList()
-          : [],
-    );
-  }
-
-  // 2. JSON Serialization (Model -> Map)
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'userId': userId,
-      'title': title,
-      'content': content,
-      // Convert the DateTime object into a JSON-friendly String
-      'createdAt': createdAt.toIso8601String(),
-      'isImportant': isImportant,
-      //take list of MedAtt, map it, convert each medAtt toJson before Sending to fireStore
-      'mediaAttachments': mediaAttachments
-          .map((attachment) => attachment.toMap())
-          .toList(),
-    };
-  }
-
-  // 3. The Bridge (Entity -> Model)
-
-  factory NoteModel.fromEntity(NoteEntity entity) {
-    return NoteModel(
-      id: entity.id,
-      userId: entity.userId,
-      title: entity.title,
-      content: entity.content,
-      createdAt: entity.createdAt,
-      isImportant: entity.isImportant,
-      //firestore List<Json>-----> map List-->convert each json to MedAtt dartObj->store list<medAtt> in noteEntity
-      mediaAttachments: entity.mediaAttachments,
-    );
-  }
-}
-
-
-
-// --- File: firestore_note_repo_impl.dart ---
-import 'package:flutter/material.dart';
-import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/note_remote_data_source.dart';
-import 'package:note_app/features/note_app/data/models/note_model.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class FireStoreNoteRepoImpl implements NoteRepository {
-  //--------- Note Remote DS (FireStore)-------------
-
-  final NoteRemoteDataSource _noteRemoteDataSource;
-  FireStoreNoteRepoImpl({required NoteRemoteDataSource noteRDS})
-    : _noteRemoteDataSource = noteRDS;
-
-  @override
-  Stream<List<NoteEntity>> getAllNotes() {
-    debugPrint('NoteRepo impl> getAll Notes Started==============');
-
-    Stream<List<Map<String, dynamic>>> rawList = _noteRemoteDataSource
-        .getAllNotes();
-
-    debugPrint('got ${rawList.length} notes from noteRDS(fireStore)');
-
-    Stream<List<NoteEntity>> noteEntities = rawList.map((listRawJson) {
-      final List<NoteEntity> noteEntityList = listRawJson.map((json) {
-        return NoteModel.fromJson(json);
-      }).toList();
-
-      return noteEntityList;
-    });
-
-    return noteEntities;
-  }
-
-  @override
-  Future<void> saveNote(NoteEntity note) async {
-    debugPrint('NoteRepoimpl>saveNotes>saving the Note Started==============');
-    debugPrint(
-      'NoteRepoimpl>saveNotes>${note.mediaAttachments.length}mediaAttachments in note which\'s passed in param',
-    );
-    NoteModel noteModel = NoteModel.fromEntity(note);
-    Map<String, dynamic> rawNote = noteModel.toJson();
-    await _noteRemoteDataSource.saveNote(rawNote);
-  }
-
-  @override
-  Future<void> deleteNote(String noteId) async {
-    await _noteRemoteDataSource.deleteNote(noteId);
-  }
-
-  @override
-  Future<void> waitForNoteWrites() async {
-    //in NoteRDS:
-    //since we clicked save button->FS trying to save notes ->if offline , cached .
-    //after cache still wait for internet->we wait for pending writes , if more than 3 seconds
-    //.timeOut Throws TimeOut error
-
-    await _noteRemoteDataSource.waitForNoteWrites();
-  }
-
-  //clear in ctr signOut after successfully notes pushed/saved online
-  @override
-  Future<void> clearLocalNoteCache() async {
-    await _noteRemoteDataSource.clearLocalNoteCache();
-  }
-
-  //--------Note LDS (Get Storage)---------------------
-
-  /*  final NoteLocalDataSource _localDataSource;
-
-  NoteRepositoryImpl({required NoteLocalDataSource localDataSource})
-    : _localDataSource = localDataSource;
-
- 
-  @override
-  List<NoteEntity> getNotes() {
-    List<dynamic>? rawData = _localDataSource.getNotesFromStorage();
-    List<dynamic> safeList = rawData ?? [];
-
-    // THE FIX: We removed .toEntity()
-    // By adding <NoteEntity> after map, we tell Dart to treat these NoteModels as NoteEntities.
-    List<NoteEntity> listOfNoteEntities = safeList
-        .map<NoteEntity>((rawMap) => NoteModel.fromJson(rawMap))
-        .toList();
-
-    return listOfNoteEntities;
-  }
-
-  @override
-  Future<void> saveNotes(List<NoteEntity> notes) async {
-    // FIX 3: Use the fromEntity translator you built
-    List<NoteModel> noteModels = notes.map((entity) {
-      return NoteModel.fromEntity(entity);
-    }).toList();
-
-    // Model --> toJson
-    List<Map<String, dynamic>> rawData = noteModels
-        .map((noteModel) => noteModel.toJson())
-        .toList();
-
-    if (notes.isNotEmpty) {
-      print(
-        'rep Impl -> saveNotes -> Latest note title is -> ${notes[0].title}',
-      );
-    }
-    await _localDataSource.saveNotesToStorage(rawData);
-  } */
-}
-
-
-
-// --- File: get_storage_note_repo_impl.dart ---
-import 'package:note_app/features/note_app/data/data_sources/get_storage.dart/note_local_data_sources/note_local_datasource.dart';
-
-import '../../domain/entity/note_entity.dart';
-import '../../domain/repositeries/note_repository.dart';
-
-import '../models/note_model.dart';
-
-class GetStorageNoteRepositoryImpl implements NoteRepository {
-  final NoteLocalDataSource _noteLocalDataSource;
-
-  GetStorageNoteRepositoryImpl({
-    required NoteLocalDataSource noteLocalDataSource,
-  }) : _noteLocalDataSource = noteLocalDataSource;
-
-  @override
-Future<void> saveNote(NoteEntity note) async {
-  // The domain gives us a NoteEntity.
-  // GetStorage does not know anything about NoteEntity,
-  // so first convert it into the storage-friendly model.
-  final NoteModel noteModel = NoteModel.fromEntity(note);
-
-  final Map<String, dynamic> rawNote = noteModel.toJson();
-
-  // GetStorage keeps all notes together as one stored list.
-  // Therefore, read the existing list before adding/updating
-  // the current note.
-  final List<dynamic> rawData =
-      _noteLocalDataSource.getNotesFromStorage() ?? [];
-
-  final List<Map<String, dynamic>> notes =
-      rawData.map(
-        (item) => Map<String, dynamic>.from(item),
-      ).toList();
-
-  // Check whether this note already exists.
-  // If it exists, update that entry.
-  // Otherwise, add it as a new note.
-  final int existingIndex = notes.indexWhere(
-    (storedNote) => storedNote['id'] == note.id,
-  );
-
-  if (existingIndex == -1) {
-    notes.add(rawNote);
-  } else {
-    notes[existingIndex] = rawNote;
-  }
-
-  // The repository has finished preparing the data.
-  // The data source now handles the actual GetStorage write.
-  await _noteLocalDataSource.saveNotesToStorage(notes);
-}
-
-  @override
-Stream<List<NoteEntity>> getAllNotes() {
-  // GetStorage gives us raw data.
-  // The repository is responsible for converting that
-  // raw data into objects that the domain layer understands.
-  final List<dynamic> rawData =
-      _noteLocalDataSource.getNotesFromStorage() ?? [];
-
-  final List<NoteEntity> notes = rawData.map((rawNote) {
-    // Storage returns dynamic values, so convert each item
-    // into the Map format expected by NoteModel.
-    final Map<String, dynamic> noteMap =
-        Map<String, dynamic>.from(rawNote);
-
-    return NoteModel.fromJson(noteMap);
-  }).toList();
-
-  // GetStorage is not a realtime stream like Firestore.
-  // We wrap the current result in a one-time Stream so that
-  // this repository can satisfy the same domain contract.
-  return Stream.value(notes);
-}
-
-  @override
-Future<void> deleteNote(String noteId) async {
-  // GetStorage stores the complete notes list, so deletion
-  // means reading the current list, removing the matching
-  // note, and writing the updated list back.
-  final List<dynamic> rawData =
-      _noteLocalDataSource.getNotesFromStorage() ?? [];
-
-  final List<Map<String, dynamic>> notes =
-      rawData.map(
-        (item) => Map<String, dynamic>.from(item),
-      ).toList();
-
-  notes.removeWhere(
-    (storedNote) => storedNote['id'] == noteId,
-  );
-
-  // The repository decides what data should be stored.
-  // The data source is responsible only for performing the write.
-  await _noteLocalDataSource.saveNotesToStorage(notes);
-}
-
-   @override
-  Future<void> waitForNoteWrites() async {
-    
-  }
-
-  //clear in ctr signOut after successfully notes pushed/saved online
-  @override
-  Future<void> clearLocalNoteCache() async {
-    
-  }
-
-}
-
-
-
-// --- File: media_attachment_repository_impl.dart ---
-import 'package:note_app/features/note_app/data/data_sources/media_local_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/media_remote_datasource.dart';
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-
-class MediaAttachmentRepositoryImpl implements MediaAttachementRepository {
-  //orchestrate between DS
-  final MediaLocalDatasource _mediaLocalDatasource;
-  final MediaRemoteDatasource _mediaRemoteDatasource;
-
-  MediaAttachmentRepositoryImpl({
-    required MediaLocalDatasource mediaLocalDatasource,
-    required MediaRemoteDatasource mediaRemoteDatasource,
-  }) : _mediaLocalDatasource = mediaLocalDatasource,
-       _mediaRemoteDatasource = mediaRemoteDatasource;
-
-  @override
-  Future<List<String>> pickMedia({
-    required NoteMediaSource source,
-    required NoteMediaType type,
-  }) async {
-    return await _mediaLocalDatasource.pickMedia(
-      mediaSource: source,
-      mediaType: type,
-    );
-  }
-
-  @override
-  Future<List<String>> uploadMultipleMedia({
-    required List<String> mediaLocalPaths,
-    required String userAuthId,
-  }) async {
-    //(rDS)oven handling order tickets(order token/reciepts) to Waiter(Future)
-    //(.map)chef (since chef doesnt wait for food[media upload task] to be made completely)
-    //faster that for in loop bcz all tasks are being completed at once
-
-    List<Future<String>> uploadTasks = mediaLocalPaths.map((localPath) {
-      return _mediaRemoteDatasource.uploadMedia(
-        localPath: localPath,
-        userAuthId: userAuthId,
-      );
-    }).toList();
-
-    //wait for food to be made (upload hughe binary file to db)
-    //return actual food(List<Strings>) to customer(repo)
-    final List<String> cloudUrls = await Future.wait(uploadTasks);
-
-    return cloudUrls;
-  }
-
-  //future proof usecase (example profile avatar only one profpic upload)
-  @override
-  Future<String> uploadMedia({
-    required String mediaLocalPath,
-    required String userAuthId,
-  }) async {
-    return await _mediaRemoteDatasource.uploadMedia(
-      localPath: mediaLocalPath,
-      userAuthId: userAuthId,
-    );
-  }
-
-  @override
-  Future<void> deleteMedia({required List<String> publicUrls}) async {
-    await _mediaRemoteDatasource.deleteMedia(publicUrls: publicUrls);
-  }
-}
-
-
-
-// --- File: note_entity.dart ---
-// lib/features/note_app/domain/entity/note_entity.dart
-
-import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
-
-class NoteEntity {
-  final String id;
-  final String userId;
-  final String title;
-  final String content;
-  final DateTime createdAt;
-  final bool isImportant;
-
-  //solution : Nested Entities , Many to one relationship.
-  final List<MediaAttachmentNestedEntity> mediaAttachments;
-
-  //CHANGED PLAN to support multiple media and type per Note
-  /* //to store cloud storage web link of img/vid
-  final String? mediaUrl;
-
-  //to store type (vid/img)
-  final String? mediaType; */
-
-  NoteEntity({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.createdAt,
-    required this.isImportant,
-    required this.userId,
-    this.mediaAttachments = const [],
-  });
-  NoteEntity copyWith({
-    String? id,
-    String? userId,
-    String? title,
-    String? content,
-    DateTime? createdAt,
-    bool? isImportant,
-    List<MediaAttachmentNestedEntity>? mediaAttachments,
-  }) {
-    return NoteEntity(
-      // If a new value is provided, use it. Otherwise, fall back to 'this' value.
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      title: title ?? this.title,
-      content: content ?? this.content,
-      createdAt: createdAt ?? this.createdAt,
-      isImportant: isImportant ?? this.isImportant,
-      mediaAttachments: mediaAttachments ?? this.mediaAttachments ,
-    );
-  }
-}
-
-
-
-// --- File: media_attachment_nested_entity.dart ---
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-
-class MediaAttachmentNestedEntity {
-  final NoteMediaType mediaType;
-  final String mediaLink;
-  MediaAttachmentNestedEntity({
-    required this.mediaType,
-    required this.mediaLink,
-  });
-
-  //Solution to error:Invalid argument (in map converted from Note) ->instance of MediaAttNesEn
-  //fireStore dont know whats a dart obj(MedAttNEnt) is.
-  //it only speaks str,int,bool,map
-  //Solution:convert medAtt to a map before sending
-  Map<String, dynamic> toMap() {
-    return {'mediaType': mediaType.name, 'mediaLink': mediaLink};
-  }
-
-  //since invalid arg err solved by converting dart obj to map,
-  //DB will return L<Map<>>.
-  //we need to conv each map to MedAtt before saving to ent
-  factory MediaAttachmentNestedEntity.fromJson({
-    required Map<String, dynamic> json,
-  }) {
-    return MediaAttachmentNestedEntity(
-      //extract type String
-      //return a Enum.option(val) if this string  MATCHES any val(option/type) in Enum
-      mediaType: NoteMediaType.values.byName(json['mediaType']),
-      mediaLink: json['mediaLink'],
-    );
-  }
-}
-
-
-
-// --- File: media_attachment_enums.dart ---
-enum NoteMediaSource { camera, gallery }
-
-enum NoteMediaType { image, video ,any}
-
-
-
-// --- File: media_attachement_repositories.dart ---
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-
-abstract class MediaAttachementRepository {
-  Future<List<String>> pickMedia({
-    required NoteMediaSource source,
-    required NoteMediaType type,
-  });
-
-  Future<String> uploadMedia({
-    required String mediaLocalPath,
-    required String userAuthId,
-  });
-
-  Future<List<String>> uploadMultipleMedia({
-    required List<String> mediaLocalPaths,
-    required String userAuthId,
-  });
-
-  Future<void> deleteMedia({required List<String> publicUrls});
-}
-
-
-
-// --- File: note_repository.dart ---
-//contract of rules,
-//(ctr,UI : Entitiies)<--Repo-->(local storage:maps)
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-
-abstract class NoteRepository {
-  // ---------------Previous  Note Local Data Storage Solo Logic -------------
-
-  /* 
-  //rule 1 must fetch list in NoteModel
-  List<NoteEntity> getNotes();
-
-
-  //rule 2 must save list of models in storage
-  Future<void> saveNotes(List<NoteEntity> notesList);
-*/
-  // --------------- both now -------------
-
-  //save single one note at time , not complete list unlike get Storage
-  Future<void> saveNote(NoteEntity note);
-  //return Future
-
-  Stream<List<NoteEntity>> getAllNotes();
-
-  //seperate delete operation for single note
-  Future<void> deleteNote(String noteId);
-
-  //check User Offline (if waiting For Pending offline notes(FireStore Off feat) to be saved online took more than 3 seconds)
-  Future<void> waitForNoteWrites();
-
-  //clear if online (waiting stoped before 3 sec->notes stored online->clear offline cache [bcz we need to signout]).
-  Future<void> clearLocalNoteCache();
-
-  
-}
-
-
-
-// --- File: add_note_usecase.dart ---
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class AddNoteUsecase {
-  //fin var (ins),construct,meth
-
-  final NoteRepository _noteRepository;
-
-  AddNoteUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  //------------Get Storage-------------
-  /* Future<void> execute(NoteEntity noteEntity) async {
-
-    final List<NoteEntity> currentList = _noteRepository.getNotes();
-
-    debugPrint('AddNoteUC -> execute  -> note title is -> ${noteEntity.title}');
-    currentList.insert(0, noteEntity);
-
-    //(- of GetStor) Fetch list , do action , and save entire list Every time
-    //unlike SQL :modify that specific data directly in DB.
-    await _noteRepository.saveNotes(currentList);
-  } */
-
-  //-------------FB Remote Data Soure---------------
-
-  Future<void> call(NoteEntity note) async {
-    await _noteRepository.saveNote(note);
-  }
-}
-
-
-
-// --- File: delete_note_usecase.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class DeleteNoteUsecase {
-  final NoteRepository _noteRepository;
-
-  DeleteNoteUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  /* Future<void> execute(String targetID) async {
-    List<NoteEntity> currentList = _noteRepository.getNotes();
-
-    currentList.removeWhere((note) => note.id == targetID);
-
-    await _noteRepository.saveNotes(currentList);
-  } */
-
-  Future<void> call(String noteId) async {
-    await _noteRepository.deleteNote(noteId);
-  }
-}
-
-
-
-// --- File: get_notes_usecase.dart ---
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class GetNotesUsecase {
-  //UC<--only talks to-->Repo (abstract boss)
-  //fin var (instance),constr,meth
-
-  final NoteRepository _noteRepository;
-
-  //contructor
-  GetNotesUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  //-----------Get Storage --------------
-  /*  //actual method
-  List<NoteEntity> execute() => noteRepository.getNotes(); */
-
-
-//------------ Note Remote D S (FireStore) ------------
-  Stream<List<NoteEntity>> call()  {
-    return  _noteRepository.getAllNotes();
-  }
-}
-
-
-
-// --- File: toggle_important_usecase.dart ---
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class ToggleImportantUsecase {
-  final NoteRepository _noteRepository;
-
-  ToggleImportantUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  /* Future<void> execute(String targetID) async {
-    List<NoteEntity> currentNotes = _noteRepository.getNotes();
-
-    final int index = currentNotes.indexWhere((note) => note.id == targetID);
-
-    if (index != -1) {
-      final oldNote = currentNotes[index];
-      final updatedNote = oldNote.copyWith(isImportant: !oldNote.isImportant);
-
-      currentNotes[index] = updatedNote;
-
-      await _noteRepository.saveNotes(currentNotes);
-    }
-  } */
-
-  Future<void> call({required NoteEntity noteEntity}) async {
-    NoteEntity toggledNoteEntity = noteEntity.copyWith(
-      isImportant: !noteEntity.isImportant,
-    );
-
-    await _noteRepository.saveNote(toggledNoteEntity);
-  }
-}
-
-
-
-// --- File: update_note_usecase.dart ---
-/* import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-
-//--------Note LDS (Get Storage)--------------
-//-------- add note/save note is already upsert. so no need seperate firestore Update UC.
-class UpdateNoteUsecase {
-  final NoteRepository _noteRepository;
-  UpdateNoteUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  Future<void> execute(NoteEntity updatedNote) async {
-    final List<NoteEntity> currentNotes = _noteRepository.getNotes();
-
-    final int index = currentNotes.indexWhere(
-      (note) => note.id == updatedNote.id,
-    );
-
-    if (index != -1) {
-      currentNotes[index] = updatedNote;
-
-      await _noteRepository.saveNotes(currentNotes);
-    }
-  }
-}
- */
-
-
-
-// --- File: clearNotesLocalCache.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class ClearNotesLocalCacheUseCase {
-  final NoteRepository _noteRepository;
-  ClearNotesLocalCacheUseCase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  Future<void> call() async {
-    await _noteRepository.clearLocalNoteCache();
-  }
-}
-
-
-
-// --- File: waitForNotesWrite.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-
-class WaitfornoteswriteUsecase {
-  final NoteRepository _noteRepository;
-  WaitfornoteswriteUsecase({required NoteRepository noteRepository})
-    : _noteRepository = noteRepository;
-
-  Future<void> call() async {
-    await _noteRepository.waitForNoteWrites();
-  }
-}
-
-
-
-// --- File: delete_media_usecase.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-
-class DeleteMediaUsecase {
-  final MediaAttachementRepository _mediaAttachementRepository;
-  DeleteMediaUsecase({
-    required MediaAttachementRepository mediaAttachementRepository,
-  }) : _mediaAttachementRepository = mediaAttachementRepository;
-
-  Future<void> call({required List<String> publicUrls}) async {
-    return await _mediaAttachementRepository.deleteMedia(
-      publicUrls: publicUrls,
-    );
-  }
-}
-
-
-
-// --- File: pick_media_usecase.dart ---
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-
-class PickMediaUsecase {
-  final MediaAttachementRepository _mediaAttachementRepository;
-  PickMediaUsecase({required MediaAttachementRepository mediaAttachRepo})
-    : _mediaAttachementRepository = mediaAttachRepo;
-
-  Future<List<String>> call({
-    required NoteMediaSource source,
-    required NoteMediaType type,
-  }) async {
-    return _mediaAttachementRepository.pickMedia(source: source, type: type);
-  }
-}
-
-
-
-// --- File: upload_media_usecase.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-
-//not used as of now (since changed decision to work with mult media), but kept for future 
-class UploadMediaUsecase {
-  final MediaAttachementRepository _mediaAttachementRepository;
-  UploadMediaUsecase({required MediaAttachementRepository mediaAttachRepo})
-    : _mediaAttachementRepository = mediaAttachRepo;
-
-  Future<String> call({
-    required String mediaLocalPath,
-    required String userAuthId,
-  }) async {
-    return _mediaAttachementRepository.uploadMedia(
-      mediaLocalPath: mediaLocalPath,
-      userAuthId: userAuthId,
-    );
-  }
-}
-
-
-
-// --- File: upload_multiple_media_usecase.dart ---
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-
-class UploadMultipleMediaUsecase {
-  final MediaAttachementRepository _mediaAttachementRepository;
-  UploadMultipleMediaUsecase({required MediaAttachementRepository mediaAttachRepo})
-    : _mediaAttachementRepository = mediaAttachRepo;
-
-  Future<List<String>> call({
-    required List<String> mediaLocalPaths,
-    required String userAuthId,
-  }) async {
-    return await _mediaAttachementRepository.uploadMultipleMedia(
-      mediaLocalPaths: mediaLocalPaths,
-      userAuthId: userAuthId,
-    );
-  }
-}
-
-
-
-// --- File: note_binding.dart ---
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:note_app/features/note_app/data/repositories_implementation/media_attachment_repository_impl.dart';
-import 'package:note_app/features/note_app/domain/repositeries/media_attachement_repositories.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/delete_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/pick_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_multiple_media_usecase.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/note_app/data/data_sources/media_local_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/media_remote_datasource.dart';
-import 'package:note_app/features/note_app/data/data_sources/firestore/note_remote_datasources.dart/note_remote_data_source.dart';
-import 'package:note_app/features/note_app/data/repositories_implementation/firestore_note_repo_impl.dart';
-import 'package:note_app/features/note_app/domain/repositeries/note_repository.dart';
-import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/clearNotesLocalCache.dart';
-import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/waitForNotesWrite.dart';
-import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/toggle_important_usecase.dart';
-import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
-
-//why?
-//all Init SoC and SRP for UI(only find not init).
-//mem management. bindings attached to getPage.only use/init when neded.
-//                delete as soon as page left
-
-class NoteBinding extends Bindings {
-  @override
-  void dependencies() {
-    //waterfall init
-    //first (StorServ is init  globally in main before even app is created ) (InitialBindings)
-    //lazy put -> init only when actually called and needed
-
-    //[1] Data source
-    //RDS Firestore first root dependency
-    Get.lazyPut<NoteRemoteDataSource>(
-      () => NoteRemoteDataSourceImpl(
-        firebasefireStore: FirebaseFirestore.instance,
-      ),
-    );
-    Get.lazyPut<MediaLocalDatasource>(
-      () => MediaLocalDatasourceImpl(imagePicker: ImagePicker()),
-    );
-    Get.lazyPut<MediaRemoteDatasource>(
-      () => MediaRemoteDatasourceImpl(supabaseClient: Supabase.instance.client),
-    );
-    //LDS Get storage
-    /*  Get.lazyPut(
-      () => NoteLocalDataSource(storageService: Get.find<StorageService>()),
-    ); */
-
-    //[2] Repo: bind abstract contract and implemen worker together.
-    //<abst> ,()=>abImpl() Diff!!
-
-    //RDS FireStore
-    Get.lazyPut<NoteRepository>(
-      () => FireStoreNoteRepoImpl(noteRDS: Get.find<NoteRemoteDataSource>()),
-    );
-
-    Get.lazyPut<MediaAttachementRepository>(
-      () => MediaAttachmentRepositoryImpl(
-        mediaLocalDatasource: Get.find<MediaLocalDatasource>(),
-        mediaRemoteDatasource: Get.find<MediaRemoteDatasource>(),
-      ),
-    );
-    /*  Get.lazyPut<NoteRepository>(
-      () => NoteRepositoryImpl(
-        localDataSource: Get.find<NoteLocalDataSource>(),
-      ),
-    ); */
-
-    //[3] UseCases (single action seperated Business logic)
-    Get.lazyPut(
-      () => GetNotesUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
-    Get.lazyPut(
-      () => AddNoteUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
-    /* Get.lazyPut(
-      //firestore RDS Upsert , .set , so no need
-
-      //() => UpdateNoteUsecase(noteRepository: Get.find<NoteRepository>()),
-    ); */
-    Get.lazyPut(
-      () => DeleteNoteUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
-    Get.lazyPut(
-      () => ToggleImportantUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
-    Get.lazyPut(
-      () =>
-          WaitfornoteswriteUsecase(noteRepository: Get.find<NoteRepository>()),
-    );
-    Get.lazyPut(
-      () => ClearNotesLocalCacheUseCase(
-        noteRepository: Get.find<NoteRepository>(),
-      ),
-    );
-
-    Get.lazyPut(
-      () => PickMediaUsecase(
-        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
-      ),
-    );
-
-    Get.lazyPut(
-      () => UploadMediaUsecase(
-        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
-      ),
-    );
-
-    Get.lazyPut(
-      () => UploadMultipleMediaUsecase(
-        mediaAttachRepo: Get.find<MediaAttachementRepository>(),
-      ),
-    );
-
-    Get.lazyPut(
-      () => DeleteMediaUsecase(
-        mediaAttachementRepository: Get.find<MediaAttachementRepository>(),
-      ),
-    );
-    //[4]Ctr (brin of UI,UI action trigger 5 usecases,actions)
-    Get.lazyPut(
-      () => NoteController(
-        addNoteUsecase: Get.find<AddNoteUsecase>(),
-        getNotesUsecase: Get.find<GetNotesUsecase>(),
-        //not needed for RDS FireStore bcz Upsert .set
-
-        //updateNoteUsecase: Get.find<UpdateNoteUsecase>(),
-        deleteNoteUsecase: Get.find<DeleteNoteUsecase>(),
-        toggleImportantUsecase: Get.find<ToggleImportantUsecase>(),
-        waitfornoteswriteUsecase: Get.find<WaitfornoteswriteUsecase>(),
-        clearnoteslocalcacheUseCase: Get.find<ClearNotesLocalCacheUseCase>(),
-        signOutUsecase: Get.find<SignOutUsecase>(),
-        pickMediaUsecase: Get.find<PickMediaUsecase>(),
-        uploadMultipleMediaUsecase: Get.find<UploadMultipleMediaUsecase>(),
-        deleteMediaUsecase: Get.find<DeleteMediaUsecase>(),
-      ),
-    );
-  }
-}
-
-
-
-// --- File: note_controller.dart ---
-//for timeOut
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-
-import 'package:get/get.dart';
-import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
-import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-import 'package:note_app/features/note_app/domain/usecases/add_note_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/delete_note_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/clearNotesLocalCache.dart';
-import 'package:note_app/features/note_app/domain/usecases/fireStore_offline_feat_usecases/waitForNotesWrite.dart';
-import 'package:note_app/features/note_app/domain/usecases/get_notes_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/delete_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/pick_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/media_attachment_usecasses/upload_multiple_media_usecase.dart';
-import 'package:note_app/features/note_app/domain/usecases/toggle_important_usecase.dart';
-import 'package:note_app/features/note_app/presentation/widgets/unsaved_changes_dialog.dart';
-
-class NoteController extends GetxController {
-  //1.fin _ fields (UCs)
-  //2.constr with init list
-  //3.reactive var List
-  //4.onInit to load
-  //5. meths (UCs) (Actn -> Exec -> reload)
-
-  final AddNoteUsecase _saveNoteUsecase;
-  final GetNotesUsecase _getNotesUsecase;
-  //since upsert in firestore, there fore no use in RDS
-  //final UpdateNoteUsecase _updateNoteUsecase;
-  final DeleteNoteUsecase _deleteNoteUsecase;
-  final ToggleImportantUsecase _toggleImportantUsecase;
-
-  //Integrating FireStor Offline Feature
-  //warn user before signOut (FS offline limitation : discard edits on auth current user change)
-  final WaitfornoteswriteUsecase _waitfornoteswriteUsecase;
-  final ClearNotesLocalCacheUseCase _clearnoteslocalcacheUseCase;
-  final SignOutUsecase _signOutUsecase;
-
-  //meadia attacment sub feat
-
-  //action :1.creat and Read
-  final PickMediaUsecase _pickMediaUsecase;
-  final UploadMultipleMediaUsecase _uploadMultipleMediaUsecase;
-  final DeleteMediaUsecase _deleteMediaUsecase;
-
-  NoteController({
-    required AddNoteUsecase addNoteUsecase,
-    required GetNotesUsecase getNotesUsecase,
-    //required UpdateNoteUsecase updateNoteUsecase,
-    required DeleteNoteUsecase deleteNoteUsecase,
-    required ToggleImportantUsecase toggleImportantUsecase,
-    required WaitfornoteswriteUsecase waitfornoteswriteUsecase,
-    required ClearNotesLocalCacheUseCase clearnoteslocalcacheUseCase,
-    required SignOutUsecase signOutUsecase,
-    required PickMediaUsecase pickMediaUsecase,
-    required UploadMultipleMediaUsecase uploadMultipleMediaUsecase,
-    required DeleteMediaUsecase deleteMediaUsecase,
-  }) : _deleteMediaUsecase = deleteMediaUsecase,
-       _pickMediaUsecase = pickMediaUsecase,
-       _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
-       _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
-       _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
-       _signOutUsecase = signOutUsecase,
-       _saveNoteUsecase = addNoteUsecase,
-       _getNotesUsecase = getNotesUsecase,
-       // _updateNoteUsecase = updateNoteUsecase,
-       _deleteNoteUsecase = deleteNoteUsecase,
-       _toggleImportantUsecase = toggleImportantUsecase;
-
-  RxList<NoteEntity> noteList = <NoteEntity>[].obs;
-  RxBool isLoading = false.obs;
-  RxString errorMessage = ''.obs;
-  //#media attachment subfeature
-  //first save local Media paths for USER PREVIEW
-  RxList<String> selectedLocalMediaPaths = <String>[].obs;
-
-  //store previously uploaded cloud media
-  //to implement unified(prev+local pick) attachment list
-  //~~1.1
-  RxList<MediaAttachmentNestedEntity> currentCloudMedia =
-      <MediaAttachmentNestedEntity>[].obs;
-
-  List<String> cloudPathsToDelete = [];
-
-  //solved ghost Ref bug
-  //remove loadNotes() from onInit
-  //add in onReady
-  //with delay for 100% gaurantee for old devices
-  //so change is noted by RxList
-
-  //comment out for mocking
-
-  @override
-  void onReady() {
-    super.onReady();
-    if (noteList.isNotEmpty) {
-      debugPrint(
-        'noteCtrl -> onReady -> note title os latest note is is -> ${noteList[0].title}',
-      );
-      debugPrint(
-        '<><><><><><>onReady of NoteCtr,now contains ${currentCloudMedia.length} previous media  attachments <><><><><><><>>',
-      );
-    }
-
-    //now the getNotes usecase is a Stream , so no need to every time manually call loadNotes
-    //just attach RxList var to getNotesUC onReady.
-
-    noteList.bindStream(_getNotesUsecase());
-
-    //attached stream to RxList
-    //no need to manually loadnotes
-    //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-
-    //fireStore Stream (.snapShot Tootks time)
-    //Future.delayed(Duration(milliseconds: 100), () => loadNotes());
-  }
-
-  //mocking NoteView
-  /*  @override
-  void onReady() {
-    super.onReady();
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      //  TEMPORARY DUMMY DATA FOR UI TESTING 
-      noteList.assignAll([
-        NoteEntity(
-          id: '1',
-          title: 'Grocery List',
-          content:
-              'Almond milk, eggs, whole wheat bread, and spinach for the week.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-        NoteEntity(
-          id: '2',
-          title: 'App Ideas',
-          content:
-              'A clean architecture note taking app with a Gen-Z minimalist aesthetic. Must use GetX.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: true,
-        ),
-        NoteEntity(
-          id: '3',
-          title: '', // Testing what happens if title is empty
-          content:
-              'This note has no title, just some random thoughts and musings for the day.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-      ]);
-
-      // COMMENT OUT THE REAL DATABASE CALL FOR NOW
-      // loadNotes();
-    });
-  } */
-
-  //~~1.2 call this before nav to Edit note
-  //~~ clear the previous state
-  void setupNoteForEditing({NoteEntity? note}) {
-    selectedLocalMediaPaths.clear();
-
-    if (note != null && note.mediaAttachments.isNotEmpty) {
-      //checking wether previous media attachments are inserted
-      debugPrint('Setting upNote for Edit View');
-      debugPrint('its an existing note with Attachments not Empty');
-      debugPrint('assigning media att of this tapped note to currCloudMedia');
-      debugPrint(
-        '<><><><> existing note has ${note.mediaAttachments.length} attachments',
-      );
-      currentCloudMedia.assignAll(note.mediaAttachments);
-    } else {
-      currentCloudMedia.clear();
-    }
-  }
-
-  //UI SignOut Action:
-  Future<void> noteViewSignOut() async {
-    try {
-      //start Loading spinner
-      //dialog -> like nav to new screen
-      //if want to close -> get Back to previous screen
-      Get.dialog(
-        Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
-
-      //we already tapped save Note button in edit Note view
-      //fireStore constantly waiting for connection and trying to push notes
-      //save in RDB as soon as reconnect
-      await _waitfornoteswriteUsecase();
-
-      //we waited-->if notes Pushed ,online ,
-      //#_clearlocal Persistance , #_signout ,#(get back)close Loading Spinner
-      await _clearnoteslocalcacheUseCase();
-      await _signOutUsecase();
-
-      //if more that 3 sec--> timeOut Exception
-    } on TimeoutException {
-      debugPrint("NoteController > signOut : TIMEOUT (User is offline)");
-      Get.back(); // Close loading indicator
-
-      // Show warning dialog
-      _showUnsavedOfflineWarnDialog();
-    } catch (e) {
-      debugPrint("NoteController > signOut : ERROR ==> $e");
-      Get.back();
-      errorMessage.value = e.toString();
-    }
-  }
-
-  //warning
-  //on TimeOut-> user is offline and trying to signout without edit save
-  void _showUnsavedOfflineWarnDialog() {
-    Get.dialog(const UnsavedChangesDialog());
-  }
-
-  //since custom widget made to get rid of UI in Ctrl (Clean Arch)
-  //there it will call force signout method on force signout button
-  Future<void> forceSignOut() async {
-    try {
-      isLoading.value = true;
-      await _clearnoteslocalcacheUseCase();
-      await _signOutUsecase();
-    } catch (e) {
-      debugPrint("NoteController > forceSignOut : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  //UI Action 1:Read
-
-//commented bcz stream is now attached to RxList
-  /////--------------RDS (FireStore)----------
-  /*  Future<void> loadNotes() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = await _getNotesUsecase();
-      noteList.assignAll(notes);
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-
-  //----------------LDS Get Storage----------
-  /* void loadNotes() {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = _getNotesUsecase.execute();
-      noteList.value = notes;
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-  //----------------Load Notes From Getstorage ENDS---------------
-
-  //UI Action 2: Create
-  //step 0 :add userAuthParam for upmedUC
-  Future<void> saveNote(NoteEntity note, String userAuthId) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-
-      //# media attacment feat
-      //# user action 2 : finally saving the note
-
-      if (cloudPathsToDelete.isNotEmpty) {
-        //delete the previous Cloud Paths to delete:
-        await _deleteMediaUsecase(publicUrls: cloudPathsToDelete);
-      }
-
-      //1.emp list for cloud urls
-      List<String> newCloudUrls = [];
-
-      //2.get cloud urls if user had selected media
-      //to decide type (.contains '.mp4')in step 3
-      if (selectedLocalMediaPaths.isNotEmpty) {
-        newCloudUrls = await _uploadMultipleMediaUsecase(
-          mediaLocalPaths: selectedLocalMediaPaths,
-          userAuthId: userAuthId,
-        );
-      }
-
-      //3.create med att (nested entities)
-      List<MediaAttachmentNestedEntity> newAttachments = newCloudUrls.map((
-        url,
-      ) {
-        final isVideo =
-            url.toLowerCase().contains('.mp4') ||
-            url.toLowerCase().contains('.mov');
-
-        return MediaAttachmentNestedEntity(
-          mediaType: isVideo ? NoteMediaType.video : NoteMediaType.image,
-          mediaLink: url,
-        );
-      }).toList();
-
-      //4. add att to att list in already existing entity if any
-      //~~1.4 join the edited new cloud media attachments, not old list
-      final allAttachments = [...currentCloudMedia, ...newAttachments];
-      debugPrint(
-        'NoteCtr>saveNote>now ${allAttachments.length} Allattachments are being injected in Note entity ',
-      );
-      //prepare new enity all attachments to finally send to addNoteUC
-      final NoteEntity noteToSave = note.copyWith(
-        mediaAttachments: allAttachments,
-      );
-
-      debugPrint(
-        'NoteCtr>saveNote>New note entity made with allAttList:$noteToSave',
-      );
-
-      //just direct() bcz of call in UC ---FOR RDS FireStore
-      await _saveNoteUsecase(noteToSave);
-      debugPrint(
-        'noteCtrl -> addNote -> note title is -> ${noteToSave.title} ,.,.,.number of attachments=>${noteToSave.mediaAttachments.length}',
-      );
-
-      //attached stream to RxList
-      //no need to manually loadnotes
-      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-      //loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>addNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  //UI Action 3:Update
-
-  //No need for RDS Firestore  bcs Upsert (saveNotes) docRef.set()
-  /*  Future<void> updateNote(NoteEntity updatedNote) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      await _updateNoteUsecase.execute(updatedNote);
-      loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>updateNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
- */
-  //UI Action 4:Delete a note
-  Future<void> deleteNote(String noteId) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-
-      //Direct () .No need of exec bcz call in UC
-      //RDS FireStore
-      await _deleteNoteUsecase(noteId);
-
-      //attached stream to RxList
-      //no need to manually loadnotes
-      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-      //loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>deleteNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  //UI Action 5:Toggle IMP
-  //pass Entity for FireStore RDS
-  Future<void> toggleImportant(NoteEntity noteEntity) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-
-      //Need to pass Entity for RDS FireStore
-      await _toggleImportantUsecase(noteEntity: noteEntity);
-      //await _toggleImportantUsecase.execute(noteId);
-
-      //attached stream to RxList
-      //no need to manually loadnotes
-      //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-      //loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>toggleImportant : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  //Meadia Attach sub feat
-
-  //UI action [1]:pickMed
-  Future<void> pickLocalMedia({
-    required NoteMediaSource source,
-    required NoteMediaType type,
-  }) async {
-    try {
-      final List<String> pickedPaths = await _pickMediaUsecase.call(
-        source: source,
-        type: type,
-      );
-
-      //only add if user didn't discards
-      if (pickedPaths.isNotEmpty) selectedLocalMediaPaths.addAll(pickedPaths);
-    } catch (e) {
-      debugPrint("NoteController > pickMedia : ERROR ==> $e");
-      errorMessage.value = "Failed to pick images: ${e.toString()}";
-    }
-  }
-
-  //~~~1.3 unified remove (remove curCloud or fresh local paths)
-  //index will come from ListVB of note preview
-  void removeMedia({required int index}) {
-    int cloudMediaListLength = currentCloudMedia.length;
-
-    if (index < cloudMediaListLength) {
-      final String cloudLink = currentCloudMedia[index].mediaLink;
-      cloudPathsToDelete.add(cloudLink);
-      currentCloudMedia.removeAt(index);
-    } else {
-      int localMediaIndex = index - cloudMediaListLength;
-      selectedLocalMediaPaths.removeAt(localMediaIndex);
-    }
-  }
-
-  //for discarding changes
-  //befor Get.back of handle back
-  void clearMediaPreview() {
-    selectedLocalMediaPaths.clear();
-  }
-
-  //# user action 2 : finally saving the note
-  //add code in existing save notes
-}
-
-
-
-// --- File: edit_note_view.dart ---
-import 'dart:io';
-
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:easy_image_viewer/easy_image_viewer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/get_instance.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart';
-import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
-import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
-//firestore has functionality to generate ID (we'll use for note ID)
-//no need of extra package
-//import 'package:uuid/uuid.dart';
-
-//stf :bcz using a UI widget(Txt F.) that req its mem manag (own life cycle)(init disp ctr)
-class EditditNoteView extends StatefulWidget {
-  const EditditNoteView({super.key});
-
-  @override
-  State<EditditNoteView> createState() => _EditditNoteViewState();
-}
-
-class _EditditNoteViewState extends State<EditditNoteView> {
-  //late :only init when actually page/view is opened(init).
-  late TextEditingController _titleController;
-  late TextEditingController _contentController;
-
-  //arg receive
-  //remove 'final' because if this starts as 'null',
-  //due to (constantly listen and save business logic)
-  // it will transform into a real note the second the user types a letter!
-  NoteEntity? _currentNote = Get.arguments as NoteEntity?;
-  final NoteController _noteController = Get.find<NoteController>();
-  //Birth
-  @override
-  void initState() {
-    super.initState();
-    //checking wether previous media attachments are inserted
-    debugPrint(
-      '<><><><><> Edit Note View>onInit > previous attachments : ${_noteController.currentCloudMedia.length} <><><><><><><><><',
-    );
-    //fill if note exist else empty str
-    _titleController = TextEditingController(
-      text: _currentNote != null ? _currentNote!.title : '',
-    );
-    _contentController = TextEditingController(
-      text: _currentNote != null ? _currentNote!.content : '',
-    );
-
-    //since firestore R/W limit ,Change business logic from auto save --> save button and back
-    /* _titleController.addListener(_autoSaveNote);
-    _contentController.addListener(_autoSaveNote); */
-  }
-
-  //Death ! clear ram when view is LEFT
-  @override
-  void dispose() {
-    super.dispose();
-
-    //auto deletes listner
-    _titleController.dispose();
-    _contentController.dispose();
-  }
-
-  //runs on every change for local DS Get Storage ,its fast and free
-  //auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
-  Future<void> _saveNote() async{
-    //extract String from ctrl
-    final String currentTitle = _titleController.text;
-    final String currentContent = _contentController.text;
-    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
-
-    //Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
-    //Soc 1.validation 1.Actions
-    //let Back buttons handle the deleting action
-    if (currentTitle.trim().isEmpty &&
-        currentContent.trim().isEmpty &&
-        _noteController.currentCloudMedia.isEmpty &&
-        _noteController.selectedLocalMediaPaths.isEmpty) {
-      return;
-    }
-
-    //Soc .Actions A.If new note,ADD(create) else B.Update
-    if (_currentNote == null) {
-      _currentNote = NoteEntity(
-        //first time , brand new note ->id,uid temporary empty ''
-        //NoteRDS firestore will asign id
-        id: '',
-        userId: userAuthId,
-        title: currentTitle,
-        content: currentContent,
-        createdAt: DateTime.now(),
-        isImportant: false,
-      );
-
-      _noteController.saveNote(_currentNote!, userAuthId);
-    } else {
-      _currentNote = _currentNote!.copyWith(
-        title: currentTitle,
-        content: currentContent,
-      );
-      //_noteController.updateNote(_currentNote!);
-
-      //saveNotes , single Upsert Method for RDS FireStore
-     await _noteController.saveNote(_currentNote!, userAuthId);
-    }
-  }
-
-  //
-  //handle Back buttons
-  Future<void> _handleBackButton() async {
-    //Explicit save note UI/UX ,so we dont auto save on back.
-    //changes discarded after back.
-    /* final String currentTitle = _titleController.text;
-    final String currentContent = _contentController.text;
-
-    if (currentTitle.trim().isEmpty &&
-        currentContent.trim().isEmpty &&
-        _currentNote != null) {
-      //await since noteController's deleteNote uses await.it takes time
-      await _noteController.deleteNote(_currentNote!.id);
-    } */
-
-    debugPrint(
-      "Moving Back .Local Data Storage List has ${_noteController.noteList.length.toString()} items.   . . . . . = = = = List --> ${_noteController.noteList} .. .. Cureent Note --> ${_currentNote?.title.toString()}",
-    );
-    //discard local selected and previous cloud media removes
-    //keep previous cloud media
-    _noteController.clearMediaPreview();
-
-    _currentNote =
-        null; // Clear the local variable so it knows the note is gone
-    Get.back();
-  }
-
-  // STEP 3: Minimalist Bottom Sheet Menu
-  void _showAttachmentBottomSheet(BuildContext context) {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded),
-              title: const Text('Take Photo'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.camera,
-                  type: NoteMediaType.image,
-                );
-                Get.back();
-              },
-            ),
-            /* ListTile(
-              leading: const Icon(Icons.videocam_rounded),
-              title: const Text('Record Video'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.camera,
-                  type: NoteMediaType.video,
-                );
-                Get.back();
-              },
-            ), */
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('Choose Images'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.gallery,
-                  type: NoteMediaType
-                      .image, // Any maps to images/videos in gallery
-                );
-                Get.back();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false, // Disables default system navigation
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _handleBackButton(); // Force our custom discard/save checks to run
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-
-        // 2. Consistent Minimalist AppBar
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Colors.black,
-              size: 22,
-            ),
-            onPressed:
-                _handleBackButton, // Runs validation check when clicking app bar arrow
-          ),
-          actions: [
-            // Explicit Save Button
-            Obx(() {
-              final bool saving = _noteController.isLoading.value;
-
-              return saving?CircularProgressIndicator():IconButton(
-                icon: Icon(
-                  Icons.check_rounded,
-                  // Changes color to grey if saving, otherwise black
-                  color: saving ? Colors.grey : Colors.black,
-                  size: 26,
-                ),
-                // Disables the button press while saving to prevent duplicate taps
-                onPressed: saving
-                    ? null
-                    : () async {
-                       await  _saveNote();
-                        _handleBackButton();
-                      },
-              );
-            }),
-          ],
-        ),
-        // Minimalist Bottom Nav to hold the '+' icon
-        bottomNavigationBar: BottomAppBar(
-          color: Colors.white,
-          elevation: 0,
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 28),
-                onPressed: () => _showAttachmentBottomSheet(context),
-              ),
-            ],
-          ),
-        ),
-
-        // 3. Simple Text Input Fields
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                // --- SIMPLIFIED PACKAGE-DRIVEN MEDIA LIST ---
-                Obx(() {
-                  final totalMedia =
-                      _noteController.currentCloudMedia.length +
-                      _noteController.selectedLocalMediaPaths.length;
-                  if (totalMedia == 0) return const SizedBox.shrink();
-
-                  return SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: totalMedia,
-                      itemBuilder: (context, index) {
-                        final cloudLen =
-                            _noteController.currentCloudMedia.length;
-                        final isCloud = index < cloudLen;
-                        final path = isCloud
-                            ? _noteController.currentCloudMedia[index].mediaLink
-                            : _noteController.selectedLocalMediaPaths[index -
-                                  cloudLen];
-
-                        //dont bload UI widgets (decImg)
-                        //calculate image provider first &
-                        //simple provide image (cached if cloud and file if local)
-                        final ImageProvider imageProvider = isCloud
-                            ? CachedNetworkImageProvider(path) as ImageProvider
-                            : FileImage(File(path));
-                        debugPrint(
-                          '<><><><><><> Media Preview LVB:current media(isCloud:$isCloud) path:$path <><><><><><>',
-                        );
-                        return GestureDetector(
-                          onTap: () {
-                            //no need to build detail image view
-                            //easy_image_provider
-                            showImageViewer(
-                              context,
-                              imageProvider,
-                              swipeDismissible: true,
-                              doubleTapZoomable: true,
-                            );
-                          },
-
-                          child: Container(
-                            width: 100,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: DecorationImage(
-                                image: imageProvider,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            child: Align(
-                              alignment: Alignment.topRight,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.cancel,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                    
-                                    _noteController.removeMedia(index: index);
-
-                                }
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }),
-
-                const SizedBox(height: 16),
-
-                // TITLE INPUT
-                TextField(
-                  controller: _titleController,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Title',
-                    hintStyle: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    border:
-                        InputBorder.none, // Removes standard ugly underlines
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // CONTENT INPUT
-                TextField(
-                  controller: _contentController,
-                  maxLines:
-                      null, // Allows the text field to grow infinitely downwards
-                  keyboardType: TextInputType.multiline,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade800,
-                    height: 1.6, // Cleaner paragraph line spacing
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Start typing...',
-                    hintStyle: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-
-// --- File: notes_view.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/presentation/widgets/note_card.dart';
-import '../controllers/note_controller.dart';
-
-class NotesView extends GetView<NoteController> {
-  const NotesView({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Notes',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 32,
-            fontWeight: FontWeight.w800, // Heavy weight for a modern look
-            letterSpacing: -1.2,
-          ),
-        ),
-        actions: [
-          // ADDED: Delete Account Button (Red for destructive action warning)
-          IconButton(
-            icon: const Icon(Icons.person_remove_rounded, color: Colors.red),
-            tooltip: 'Delete Account',
-            onPressed: () {
-              debugPrint('[UI] Triggering Delete Account from NotesView');
-              Get.find<AuthController>().deleteAccount();
-            },
-          ),
-
-          // MODIFIED: Sign Out Button (Black to match minimal theme)
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            tooltip: 'Sign Out',
-            onPressed: () {
-              debugPrint('[UI] Triggering Sign Out from NotesView');
-
-              //fireStore Offlline feature doesn't uses auth's signout
-              //Get.find<AuthController>().signOut;
-
-              //noteCtr signOut>checks if offline(Local cached notes saved or not)
-              //sighnout if reonnected(saved safely)
-              //dialogue to warn user regarding discard bcz offline
-              controller.noteViewSignOut();
-            },
-          ),
-          const SizedBox(width: 8), // Slight right-padding for a polished look
-        ],
-      ),
-
-      // Obx is our "Cashier", constantly watching the noteList
-      body: Obx(() {
-        // 1. EMPTY STATE
-        if (controller.noteList.isEmpty) {
-          return const Center(
-            child: Text(
-              'No notes yet.\nclick "+" to add note.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
-            ),
-          );
-        }
-
-        // 2. GRID STATE (This will show your Dummy Data!)
-        return GridView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, // 2 columns
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.9,
-          ),
-          itemCount: controller.noteList.length,
-          itemBuilder: (context, index) {
-            final NoteEntity note = controller.noteList[index];
-
-            return NoteCardWidget(note: note, controller: controller);
-          },
-        );
-      }),
-
-      // FLOATING ACTION BUTTON
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () {
-          // Passing 'null' tells the next screen: "This is a brand new note!"
-          controller.setupNoteForEditing();
-          Get.toNamed(AppRoutes.editNote, arguments: null);
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-}
-
-
-
-// --- File: note_card.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart';
-import 'package:note_app/core/routes/app_routes.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
-
-class NoteCardWidget extends StatelessWidget {
-  final NoteEntity note;
-  final NoteController controller;
-  const NoteCardWidget({
-    super.key,
-    required this.note,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Clicking an existing note passes that specific note to the editor
-        final NoteController noteController = Get.find<NoteController>();
-        
-        noteController.setupNoteForEditing(note: note);
-        debugPrint(
-          '<><><><><><>note is tapped in NoteView , nav to editNoteView with media ${note.mediaAttachments.length} attachments <><><><><><><>>',
-        );
-        Get.toNamed(AppRoutes.editNote, arguments: note);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.grey.shade200,
-          ), // Clean, subtle border
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // TITLE (With fallback for empty titles)
-            Text(
-              note.title.trim().isNotEmpty ? note.title : 'Untitled',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // CONTENT
-            Expanded(
-              child: Text(
-                note.content,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
-            ),
-            // BOTTOM ROW: IMPORTANT & DELETE
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Important Toggle (Star)
-                GestureDetector(
-                  onTap: () => controller.toggleImportant(note),
-                  child: Icon(
-                    note.isImportant
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    color: note.isImportant
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                    size: 24,
-                  ),
-                ),
-                // Delete Button
-                GestureDetector(
-                  onTap: () {
-                    controller.deleteNote(note.id);
-                  },
-                  child: Icon(
-                    Icons.delete_outline_rounded,
-                    color: Colors.grey.shade400,
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-    ;
-  }
-}
-
-
-
-// --- File: unsaved_changes_dialog.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../controllers/note_controller.dart';
-
-class UnsavedChangesDialog extends GetView<NoteController> {
-  const UnsavedChangesDialog({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-        backgroundColor: Colors.white,
-        elevation: 0, // Removes the drop shadow for a flat, modern look
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24), // Heavy rounded corners
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Wraps height to content
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Unsaved edits",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800, // Heavy weight for title
-                  color: Colors.black,
-                  letterSpacing: -0.5, // Tight letter spacing looks modern
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                "You have offline edits. Force signing out will permanently delete them.",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54, // Soft grey for secondary text
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back(); // Close dialog first
-
-                      // FIXED: Calling public method on the injected controller
-                      await controller.forceSignOut();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                        elevation: 0, // Flat button
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        "Force Out",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-  }
-}
-
-
-
-// --- File: splash_binding.dart ---
-import 'package:get/get.dart';
-import 'package:note_app/features/splash/presentation/controllers/splash_controller.dart';
-
-class SplashBinding extends Bindings {
-  @override
-  void dependencies() {
-    Get.put(SplashController());
-  }
-}
-
-
-
-// --- File: splash_controller.dart ---
-import 'dart:async';
-import 'package:get/state_manager.dart';
-
-class SplashController extends GetxController {
-  @override
-  void onInit() {
-    super.onInit();
-    _startSplashTimer();
-  }
-
-  void _startSplashTimer() {
-    Timer(const Duration(seconds: 4), () {});
-  }
-}
-
-
-
-// --- File: splash_view.dart ---
-import 'package:flutter/material.dart';
-import 'package:get/state_manager.dart';
-import 'package:note_app/core/constants/app_assets/image_assets_path.dart';
-import 'package:note_app/features/splash/presentation/controllers/splash_controller.dart';
-
-class SplashView extends GetView<SplashController>{
-  const SplashView({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-     return Scaffold(
-      body: Image.asset(
-        ImageAssetsPath.splashImage,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-      ),
-    );
-  }
-
-}
-
-
-
 // --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\main.dart ---  
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -4450,7 +194,7 @@ abstract class AppPages {
       page: () => const NotesView(),
       binding: NoteBinding(),
     ),
-    GetPage(name: AppRoutes.editNote, page: () => const EditditNoteView()),
+    GetPage(name: AppRoutes.editNote, page: () => const EditNoteView()),
     GetPage(name: AppRoutes.otpView, page: ()=> OtpView())
   ];
 }
@@ -7185,9 +2929,8 @@ class NoteBinding extends Bindings {
 // --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\controllers\note_controller.dart ---  
 //for timeOut
 import 'dart:async';
-
+import 'package:firebase_auth/firebase_auth.dart'; // NEW CHANGE: Added for user auth ID in saveCurrentNote
 import 'package:flutter/material.dart';
-
 import 'package:get/get.dart';
 import 'package:note_app/features/auth/domain/usecases/email_pass_auth_usecases/sign_out_usecase.dart';
 import 'package:note_app/features/note_app/domain/entity/nested_entities/media_attachment_nested_entity.dart';
@@ -7210,7 +2953,6 @@ class NoteController extends GetxController {
   //3.reactive var List
   //4.onInit to load
   //5. meths (UCs) (Actn -> Exec -> reload)
-
   final AddNoteUsecase _saveNoteUsecase;
   final GetNotesUsecase _getNotesUsecase;
   //since upsert in firestore, there fore no use in RDS
@@ -7225,11 +2967,22 @@ class NoteController extends GetxController {
   final SignOutUsecase _signOutUsecase;
 
   //meadia attacment sub feat
-
   //action :1.creat and Read
   final PickMediaUsecase _pickMediaUsecase;
   final UploadMultipleMediaUsecase _uploadMultipleMediaUsecase;
   final DeleteMediaUsecase _deleteMediaUsecase;
+
+  // NEW CHANGE: Controllers for Title & Content held inside NoteController so UI can be StatelessWidget
+  // late :only init when actually page/view is opened(init).
+  late TextEditingController titleController;
+  late TextEditingController contentController;
+
+  // NEW CHANGE: Hold currentNote reference inside controller
+  // arg receive
+  // remove 'final' because if this starts as 'null',
+  // due to (constantly listen and save business logic)
+  // it will transform into a real note the second the user types a letter!
+  NoteEntity? currentNote;
 
   NoteController({
     required AddNoteUsecase addNoteUsecase,
@@ -7243,21 +2996,22 @@ class NoteController extends GetxController {
     required PickMediaUsecase pickMediaUsecase,
     required UploadMultipleMediaUsecase uploadMultipleMediaUsecase,
     required DeleteMediaUsecase deleteMediaUsecase,
-  }) : _deleteMediaUsecase = deleteMediaUsecase,
-       _pickMediaUsecase = pickMediaUsecase,
-       _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
-       _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
-       _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
-       _signOutUsecase = signOutUsecase,
-       _saveNoteUsecase = addNoteUsecase,
-       _getNotesUsecase = getNotesUsecase,
-       // _updateNoteUsecase = updateNoteUsecase,
-       _deleteNoteUsecase = deleteNoteUsecase,
-       _toggleImportantUsecase = toggleImportantUsecase;
+  })  : _deleteMediaUsecase = deleteMediaUsecase,
+        _pickMediaUsecase = pickMediaUsecase,
+        _uploadMultipleMediaUsecase = uploadMultipleMediaUsecase,
+        _waitfornoteswriteUsecase = waitfornoteswriteUsecase,
+        _clearnoteslocalcacheUseCase = clearnoteslocalcacheUseCase,
+        _signOutUsecase = signOutUsecase,
+        _saveNoteUsecase = addNoteUsecase,
+        _getNotesUsecase = getNotesUsecase,
+        // _updateNoteUsecase = updateNoteUsecase,
+        _deleteNoteUsecase = deleteNoteUsecase,
+        _toggleImportantUsecase = toggleImportantUsecase;
 
   RxList<NoteEntity> noteList = <NoteEntity>[].obs;
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
+
   //#media attachment subfeature
   //first save local Media paths for USER PREVIEW
   RxList<String> selectedLocalMediaPaths = <String>[].obs;
@@ -7270,14 +3024,30 @@ class NoteController extends GetxController {
 
   List<String> cloudPathsToDelete = [];
 
+  // NEW CHANGE: Initialize TextEditingControllers on controller lifecycle init
+  @override
+  void onInit() {
+    super.onInit();
+    titleController = TextEditingController();
+    contentController = TextEditingController();
+  }
+
+  // Death ! clear ram when view is LEFT
+  // NEW CHANGE: Clean up controllers on controller lifecycle close
+  @override
+  void onClose() {
+    // auto deletes listner
+    titleController.dispose();
+    contentController.dispose();
+    super.onClose();
+  }
+
   //solved ghost Ref bug
   //remove loadNotes() from onInit
   //add in onReady
   //with delay for 100% gaurantee for old devices
   //so change is noted by RxList
-
   //comment out for mocking
-
   @override
   void onReady() {
     super.onReady();
@@ -7289,64 +3059,25 @@ class NoteController extends GetxController {
         '<><><><><><>onReady of NoteCtr,now contains ${currentCloudMedia.length} previous media  attachments <><><><><><><>>',
       );
     }
-
     //now the getNotes usecase is a Stream , so no need to every time manually call loadNotes
     //just attach RxList var to getNotesUC onReady.
-
-    noteList.bindStream(_getNotesUsecase());
-
-    //attached stream to RxList
+    noteList.bindStream(_getNotesUsecase()); //attached stream to RxList
     //no need to manually loadnotes
     //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
-
     //fireStore Stream (.snapShot Tootks time)
     //Future.delayed(Duration(milliseconds: 100), () => loadNotes());
   }
 
-  //mocking NoteView
-  /*  @override
-  void onReady() {
-    super.onReady();
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      //  TEMPORARY DUMMY DATA FOR UI TESTING 
-      noteList.assignAll([
-        NoteEntity(
-          id: '1',
-          title: 'Grocery List',
-          content:
-              'Almond milk, eggs, whole wheat bread, and spinach for the week.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-        NoteEntity(
-          id: '2',
-          title: 'App Ideas',
-          content:
-              'A clean architecture note taking app with a Gen-Z minimalist aesthetic. Must use GetX.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: true,
-        ),
-        NoteEntity(
-          id: '3',
-          title: '', // Testing what happens if title is empty
-          content:
-              'This note has no title, just some random thoughts and musings for the day.',
-          createdAt: DateTime.now().toIso8601String(),
-          isImportant: false,
-        ),
-      ]);
-
-      // COMMENT OUT THE REAL DATABASE CALL FOR NOW
-      // loadNotes();
-    });
-  } */
-
   //~~1.2 call this before nav to Edit note
   //~~ clear the previous state
   void setupNoteForEditing({NoteEntity? note}) {
-    selectedLocalMediaPaths.clear();
+    // NEW CHANGE: Receive note argument & update text fields from controller
+    currentNote = note;
+    // fill if note exist else empty str
+    titleController.text = currentNote != null ? currentNote!.title : '';
+    contentController.text = currentNote != null ? currentNote!.content : '';
 
+    selectedLocalMediaPaths.clear();
     if (note != null && note.mediaAttachments.isNotEmpty) {
       //checking wether previous media attachments are inserted
       debugPrint('Setting upNote for Edit View');
@@ -7361,6 +3092,70 @@ class NoteController extends GetxController {
     }
   }
 
+  // NEW CHANGE: Moved `_saveNote` logic completely into `NoteController` to keep UI dumb
+  // runs on every change for local DS Get Storage ,its fast and free
+  // auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
+  Future<void> saveCurrentNote() async {
+    // extract String from ctrl
+    final String currentTitle = titleController.text;
+    final String currentContent = contentController.text;
+    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
+
+    // Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
+    // Soc 1.validation 1.Actions
+    // let Back buttons handle the deleting action
+    if (currentTitle.trim().isEmpty &&
+        currentContent.trim().isEmpty &&
+        currentCloudMedia.isEmpty &&
+        selectedLocalMediaPaths.isEmpty) {
+      return;
+    }
+
+    // Soc .Actions A.If new note,ADD(create) else B.Update
+    if (currentNote == null) {
+      currentNote = NoteEntity(
+        // first time , brand new note ->id,uid temporary empty ''
+        // NoteRDS firestore will asign id
+        id: '',
+        userId: userAuthId,
+        title: currentTitle,
+        content: currentContent,
+        createdAt: DateTime.now(),
+        isImportant: false,
+      );
+      await saveNote(currentNote!, userAuthId);
+    } else {
+      currentNote = currentNote!.copyWith(
+        title: currentTitle,
+        content: currentContent,
+      );
+      // _noteController.updateNote(_currentNote!);
+      // saveNotes , single Upsert Method for RDS FireStore
+      await saveNote(currentNote!, userAuthId);
+    }
+  }
+
+  // handle Back buttons
+  // NEW CHANGE: Moved `_handleBackButton` logic completely into NoteController
+  Future<void> handleBackButton() async {
+    // Explicit save note UI/UX ,so we dont auto save on back.
+    // changes discarded after back.
+    /* final String currentTitle = _titleController.text;
+    final String currentContent = _contentController.text;
+    if (currentTitle.trim().isEmpty && currentContent.trim().isEmpty && _currentNote != null) {
+      //await since noteController's deleteNote uses await.it takes time
+      await _noteController.deleteNote(_currentNote!.id);
+    } */
+    debugPrint(
+      "Moving Back .Local Data Storage List has ${noteList.length.toString()} items. . . . . . = = = = List -->${noteList} .. .. Cureent Note --> ${currentNote?.title.toString()}",
+    );
+    // discard local selected and previous cloud media removes
+    // keep previous cloud media
+    clearMediaPreview();
+    currentNote = null; // Clear the local variable so it knows the note is gone
+    Get.back();
+  }
+
   //UI SignOut Action:
   Future<void> noteViewSignOut() async {
     try {
@@ -7368,25 +3163,21 @@ class NoteController extends GetxController {
       //dialog -> like nav to new screen
       //if want to close -> get Back to previous screen
       Get.dialog(
-        Center(child: CircularProgressIndicator()),
+        const Center(child: CircularProgressIndicator()),
         barrierDismissible: false,
       );
-
       //we already tapped save Note button in edit Note view
       //fireStore constantly waiting for connection and trying to push notes
       //save in RDB as soon as reconnect
       await _waitfornoteswriteUsecase();
-
       //we waited-->if notes Pushed ,online ,
       //#_clearlocal Persistance , #_signout ,#(get back)close Loading Spinner
       await _clearnoteslocalcacheUseCase();
       await _signOutUsecase();
-
       //if more that 3 sec--> timeOut Exception
     } on TimeoutException {
       debugPrint("NoteController > signOut : TIMEOUT (User is offline)");
       Get.back(); // Close loading indicator
-
       // Show warning dialog
       _showUnsavedOfflineWarnDialog();
     } catch (e) {
@@ -7417,58 +3208,20 @@ class NoteController extends GetxController {
     }
   }
 
-  //UI Action 1:Read
-
-//commented bcz stream is now attached to RxList
-  /////--------------RDS (FireStore)----------
-  /*  Future<void> loadNotes() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = await _getNotesUsecase();
-      noteList.assignAll(notes);
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-
-  //----------------LDS Get Storage----------
-  /* void loadNotes() {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final notes = _getNotesUsecase.execute();
-      noteList.value = notes;
-    } catch (e) {
-      debugPrint("note_app>pres>controller>loadNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  } */
-  //----------------Load Notes From Getstorage ENDS---------------
-
   //UI Action 2: Create
   //step 0 :add userAuthParam for upmedUC
   Future<void> saveNote(NoteEntity note, String userAuthId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //# media attacment feat
       //# user action 2 : finally saving the note
-
       if (cloudPathsToDelete.isNotEmpty) {
         //delete the previous Cloud Paths to delete:
         await _deleteMediaUsecase(publicUrls: cloudPathsToDelete);
       }
-
       //1.emp list for cloud urls
       List<String> newCloudUrls = [];
-
       //2.get cloud urls if user had selected media
       //to decide type (.contains '.mp4')in step 3
       if (selectedLocalMediaPaths.isNotEmpty) {
@@ -7477,32 +3230,28 @@ class NoteController extends GetxController {
           userAuthId: userAuthId,
         );
       }
-
       //3.create med att (nested entities)
       List<MediaAttachmentNestedEntity> newAttachments = newCloudUrls.map((
         url,
       ) {
         final isVideo =
-            url.toLowerCase().contains('.mp4') ||
-            url.toLowerCase().contains('.mov');
-
+            url.toLowerCase().contains('.mp4') || url.toLowerCase().contains('.mov');
         return MediaAttachmentNestedEntity(
           mediaType: isVideo ? NoteMediaType.video : NoteMediaType.image,
           mediaLink: url,
         );
       }).toList();
-
       //4. add att to att list in already existing entity if any
       //~~1.4 join the edited new cloud media attachments, not old list
       final allAttachments = [...currentCloudMedia, ...newAttachments];
       debugPrint(
         'NoteCtr>saveNote>now ${allAttachments.length} Allattachments are being injected in Note entity ',
       );
+
       //prepare new enity all attachments to finally send to addNoteUC
       final NoteEntity noteToSave = note.copyWith(
         mediaAttachments: allAttachments,
       );
-
       debugPrint(
         'NoteCtr>saveNote>New note entity made with allAttList:$noteToSave',
       );
@@ -7512,7 +3261,6 @@ class NoteController extends GetxController {
       debugPrint(
         'noteCtrl -> addNote -> note title is -> ${noteToSave.title} ,.,.,.number of attachments=>${noteToSave.mediaAttachments.length}',
       );
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -7525,33 +3273,14 @@ class NoteController extends GetxController {
     }
   }
 
-  //UI Action 3:Update
-
-  //No need for RDS Firestore  bcs Upsert (saveNotes) docRef.set()
-  /*  Future<void> updateNote(NoteEntity updatedNote) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      await _updateNoteUsecase.execute(updatedNote);
-      loadNotes();
-    } catch (e) {
-      debugPrint("note_app>pres>controller>updateNotes : ERROR ==> $e");
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
- */
   //UI Action 4:Delete a note
   Future<void> deleteNote(String noteId) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //Direct () .No need of exec bcz call in UC
       //RDS FireStore
       await _deleteNoteUsecase(noteId);
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -7570,11 +3299,9 @@ class NoteController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
       //Need to pass Entity for RDS FireStore
       await _toggleImportantUsecase(noteEntity: noteEntity);
       //await _toggleImportantUsecase.execute(noteId);
-
       //attached stream to RxList
       //no need to manually loadnotes
       //noteUpdated-->stream attached to RxList-->if old vs new diff then RxList is updated
@@ -7588,7 +3315,6 @@ class NoteController extends GetxController {
   }
 
   //Meadia Attach sub feat
-
   //UI action [1]:pickMed
   Future<void> pickLocalMedia({
     required NoteMediaSource source,
@@ -7599,7 +3325,6 @@ class NoteController extends GetxController {
         source: source,
         type: type,
       );
-
       //only add if user didn't discards
       if (pickedPaths.isNotEmpty) selectedLocalMediaPaths.addAll(pickedPaths);
     } catch (e) {
@@ -7612,7 +3337,6 @@ class NoteController extends GetxController {
   //index will come from ListVB of note preview
   void removeMedia({required int index}) {
     int cloudMediaListLength = currentCloudMedia.length;
-
     if (index < cloudMediaListLength) {
       final String cloudLink = currentCloudMedia[index].mediaLink;
       cloudPathsToDelete.add(cloudLink);
@@ -7628,203 +3352,20 @@ class NoteController extends GetxController {
   void clearMediaPreview() {
     selectedLocalMediaPaths.clear();
   }
-
-  //# user action 2 : finally saving the note
-  //add code in existing save notes
-}
- 
+} 
 // --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\views\edit_note_view.dart ---  
-import 'dart:io';
-
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:easy_image_viewer/easy_image_viewer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/get_instance.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart';
-import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:note_app/features/note_app/domain/entity/note_entity.dart';
-import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
+import 'package:get/get.dart';
 import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
-//firestore has functionality to generate ID (we'll use for note ID)
-//no need of extra package
-//import 'package:uuid/uuid.dart';
+import 'package:note_app/features/note_app/presentation/widgets/attachment_bottom_sheet.dart';
+import 'package:note_app/features/note_app/presentation/widgets/media_preview_list.dart';
+// Import the separated widget files here
+// import 'attachment_bottom_sheet.dart'; 
+// import 'media_preview_list.dart'; 
 
-//stf :bcz using a UI widget(Txt F.) that req its mem manag (own life cycle)(init disp ctr)
-class EditditNoteView extends StatefulWidget {
-  const EditditNoteView({super.key});
-
-  @override
-  State<EditditNoteView> createState() => _EditditNoteViewState();
-}
-
-class _EditditNoteViewState extends State<EditditNoteView> {
-  //late :only init when actually page/view is opened(init).
-  late TextEditingController _titleController;
-  late TextEditingController _contentController;
-
-  //arg receive
-  //remove 'final' because if this starts as 'null',
-  //due to (constantly listen and save business logic)
-  // it will transform into a real note the second the user types a letter!
-  NoteEntity? _currentNote = Get.arguments as NoteEntity?;
-  final NoteController _noteController = Get.find<NoteController>();
-  //Birth
-  @override
-  void initState() {
-    super.initState();
-    //checking wether previous media attachments are inserted
-    debugPrint(
-      '<><><><><> Edit Note View>onInit > previous attachments : ${_noteController.currentCloudMedia.length} <><><><><><><><><',
-    );
-    //fill if note exist else empty str
-    _titleController = TextEditingController(
-      text: _currentNote != null ? _currentNote!.title : '',
-    );
-    _contentController = TextEditingController(
-      text: _currentNote != null ? _currentNote!.content : '',
-    );
-
-    //since firestore R/W limit ,Change business logic from auto save --> save button and back
-    /* _titleController.addListener(_autoSaveNote);
-    _contentController.addListener(_autoSaveNote); */
-  }
-
-  //Death ! clear ram when view is LEFT
-  @override
-  void dispose() {
-    super.dispose();
-
-    //auto deletes listner
-    _titleController.dispose();
-    _contentController.dispose();
-  }
-
-  //runs on every change for local DS Get Storage ,its fast and free
-  //auto save -->save Notes for RDS FireStore, limited R/W access. takes time.
-  Future<void> _saveNote() async{
-    //extract String from ctrl
-    final String currentTitle = _titleController.text;
-    final String currentContent = _contentController.text;
-    final String userAuthId = FirebaseAuth.instance.currentUser!.uid;
-
-    //Gaurd Clause.gaurd us from running actions if the note is EMPTY.and
-    //Soc 1.validation 1.Actions
-    //let Back buttons handle the deleting action
-    if (currentTitle.trim().isEmpty &&
-        currentContent.trim().isEmpty &&
-        _noteController.currentCloudMedia.isEmpty &&
-        _noteController.selectedLocalMediaPaths.isEmpty) {
-      return;
-    }
-
-    //Soc .Actions A.If new note,ADD(create) else B.Update
-    if (_currentNote == null) {
-      _currentNote = NoteEntity(
-        //first time , brand new note ->id,uid temporary empty ''
-        //NoteRDS firestore will asign id
-        id: '',
-        userId: userAuthId,
-        title: currentTitle,
-        content: currentContent,
-        createdAt: DateTime.now(),
-        isImportant: false,
-      );
-
-      _noteController.saveNote(_currentNote!, userAuthId);
-    } else {
-      _currentNote = _currentNote!.copyWith(
-        title: currentTitle,
-        content: currentContent,
-      );
-      //_noteController.updateNote(_currentNote!);
-
-      //saveNotes , single Upsert Method for RDS FireStore
-     await _noteController.saveNote(_currentNote!, userAuthId);
-    }
-  }
-
-  //
-  //handle Back buttons
-  Future<void> _handleBackButton() async {
-    //Explicit save note UI/UX ,so we dont auto save on back.
-    //changes discarded after back.
-    /* final String currentTitle = _titleController.text;
-    final String currentContent = _contentController.text;
-
-    if (currentTitle.trim().isEmpty &&
-        currentContent.trim().isEmpty &&
-        _currentNote != null) {
-      //await since noteController's deleteNote uses await.it takes time
-      await _noteController.deleteNote(_currentNote!.id);
-    } */
-
-    debugPrint(
-      "Moving Back .Local Data Storage List has ${_noteController.noteList.length.toString()} items.   . . . . . = = = = List --> ${_noteController.noteList} .. .. Cureent Note --> ${_currentNote?.title.toString()}",
-    );
-    //discard local selected and previous cloud media removes
-    //keep previous cloud media
-    _noteController.clearMediaPreview();
-
-    _currentNote =
-        null; // Clear the local variable so it knows the note is gone
-    Get.back();
-  }
-
-  // STEP 3: Minimalist Bottom Sheet Menu
-  void _showAttachmentBottomSheet(BuildContext context) {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded),
-              title: const Text('Take Photo'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.camera,
-                  type: NoteMediaType.image,
-                );
-                Get.back();
-              },
-            ),
-            /* ListTile(
-              leading: const Icon(Icons.videocam_rounded),
-              title: const Text('Record Video'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.camera,
-                  type: NoteMediaType.video,
-                );
-                Get.back();
-              },
-            ), */
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('Choose Images'),
-              onTap: () {
-                _noteController.pickLocalMedia(
-                  source: NoteMediaSource.gallery,
-                  type: NoteMediaType
-                      .image, // Any maps to images/videos in gallery
-                );
-                Get.back();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+// NEW CHANGE: Extending GetView<NoteController> automatically gives access to 'controller'
+class EditNoteView extends GetView<NoteController> {
+  const EditNoteView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -7832,11 +3373,10 @@ class _EditditNoteViewState extends State<EditditNoteView> {
       canPop: false, // Disables default system navigation
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        await _handleBackButton(); // Force our custom discard/save checks to run
+        await controller.handleBackButton(); // Force our custom discard/save checks to run
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-
         // 2. Consistent Minimalist AppBar
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -7847,29 +3387,29 @@ class _EditditNoteViewState extends State<EditditNoteView> {
               color: Colors.black,
               size: 22,
             ),
-            onPressed:
-                _handleBackButton, // Runs validation check when clicking app bar arrow
+            onPressed: controller.handleBackButton, // Runs validation check when clicking app bar arrow
           ),
           actions: [
             // Explicit Save Button
             Obx(() {
-              final bool saving = _noteController.isLoading.value;
-
-              return saving?CircularProgressIndicator():IconButton(
-                icon: Icon(
-                  Icons.check_rounded,
-                  // Changes color to grey if saving, otherwise black
-                  color: saving ? Colors.grey : Colors.black,
-                  size: 26,
-                ),
-                // Disables the button press while saving to prevent duplicate taps
-                onPressed: saving
-                    ? null
-                    : () async {
-                       await  _saveNote();
-                        _handleBackButton();
-                      },
-              );
+              final bool saving = controller.isLoading.value;
+              return saving
+                  ? const CircularProgressIndicator()
+                  : IconButton(
+                      icon: Icon(
+                        Icons.check_rounded,
+                        // Changes color to grey if saving, otherwise black
+                        color: saving ? Colors.grey : Colors.black,
+                        size: 26,
+                      ),
+                      // Disables the button press while saving to prevent duplicate taps
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              await controller.saveCurrentNote();
+                              controller.handleBackButton();
+                            },
+                    );
             }),
           ],
         ),
@@ -7881,96 +3421,24 @@ class _EditditNoteViewState extends State<EditditNoteView> {
             children: [
               IconButton(
                 icon: const Icon(Icons.add_circle_outline_rounded, size: 28),
-                onPressed: () => _showAttachmentBottomSheet(context),
+                // Calls the separated bottom sheet widget
+                onPressed: () => Get.bottomSheet(const AttachmentBottomSheet()),
               ),
             ],
           ),
         ),
-
         // 3. Simple Text Input Fields
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               children: [
-                // --- SIMPLIFIED PACKAGE-DRIVEN MEDIA LIST ---
-                Obx(() {
-                  final totalMedia =
-                      _noteController.currentCloudMedia.length +
-                      _noteController.selectedLocalMediaPaths.length;
-                  if (totalMedia == 0) return const SizedBox.shrink();
-
-                  return SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: totalMedia,
-                      itemBuilder: (context, index) {
-                        final cloudLen =
-                            _noteController.currentCloudMedia.length;
-                        final isCloud = index < cloudLen;
-                        final path = isCloud
-                            ? _noteController.currentCloudMedia[index].mediaLink
-                            : _noteController.selectedLocalMediaPaths[index -
-                                  cloudLen];
-
-                        //dont bload UI widgets (decImg)
-                        //calculate image provider first &
-                        //simple provide image (cached if cloud and file if local)
-                        final ImageProvider imageProvider = isCloud
-                            ? CachedNetworkImageProvider(path) as ImageProvider
-                            : FileImage(File(path));
-                        debugPrint(
-                          '<><><><><><> Media Preview LVB:current media(isCloud:$isCloud) path:$path <><><><><><>',
-                        );
-                        return GestureDetector(
-                          onTap: () {
-                            //no need to build detail image view
-                            //easy_image_provider
-                            showImageViewer(
-                              context,
-                              imageProvider,
-                              swipeDismissible: true,
-                              doubleTapZoomable: true,
-                            );
-                          },
-
-                          child: Container(
-                            width: 100,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: DecorationImage(
-                                image: imageProvider,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            child: Align(
-                              alignment: Alignment.topRight,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.cancel,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                    
-                                    _noteController.removeMedia(index: index);
-
-                                }
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }),
-
+                // Modular horizontal media preview list
+                const MediaPreviewList(),
                 const SizedBox(height: 16),
-
                 // TITLE INPUT
                 TextField(
-                  controller: _titleController,
+                  controller: controller.titleController,
                   maxLines: 1,
                   style: const TextStyle(
                     fontSize: 24,
@@ -7983,17 +3451,14 @@ class _EditditNoteViewState extends State<EditditNoteView> {
                       color: Colors.grey,
                       fontWeight: FontWeight.w400,
                     ),
-                    border:
-                        InputBorder.none, // Removes standard ugly underlines
+                    border: InputBorder.none, // Removes standard ugly underlines
                   ),
                 ),
                 const SizedBox(height: 8),
-
                 // CONTENT INPUT
                 TextField(
-                  controller: _contentController,
-                  maxLines:
-                      null, // Allows the text field to grow infinitely downwards
+                  controller: controller.contentController,
+                  maxLines: null, // Allows the text field to grow infinitely downwards
                   keyboardType: TextInputType.multiline,
                   style: TextStyle(
                     fontSize: 16,
@@ -8016,8 +3481,7 @@ class _EditditNoteViewState extends State<EditditNoteView> {
       ),
     );
   }
-}
- 
+} 
 // --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\views\notes_view.dart ---  
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8130,6 +3594,150 @@ class NotesView extends GetView<NoteController> {
   }
 }
  
+// --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\widgets\attachment_bottom_sheet.dart ---  
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:note_app/features/note_app/domain/enums/media_attachment_enums.dart';
+import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
+
+// NEW CHANGE: Extending GetView<NoteController> eliminates Get.find()
+class AttachmentBottomSheet extends GetView<NoteController> {
+  const AttachmentBottomSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt_rounded),
+            title: const Text('Take Photo'),
+            onTap: () {
+              controller.pickLocalMedia(
+                source: NoteMediaSource.camera,
+                type: NoteMediaType.image,
+              );
+              Get.back();
+            },
+          ),
+          /* ListTile(
+            leading: const Icon(Icons.videocam_rounded),
+            title: const Text('Record Video'),
+            onTap: () {
+              controller.pickLocalMedia(
+                source: NoteMediaSource.camera,
+                type: NoteMediaType.video,
+              );
+              Get.back();
+            },
+          ), */
+          ListTile(
+            leading: const Icon(Icons.photo_library_rounded),
+            title: const Text('Choose Images'),
+            onTap: () {
+              controller.pickLocalMedia(
+                source: NoteMediaSource.gallery,
+                type: NoteMediaType.image, // Any maps to images/videos in gallery
+              );
+              Get.back();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+} 
+// --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\widgets\media_preview_list.dart ---  
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_image_viewer/easy_image_viewer.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:note_app/features/note_app/presentation/controllers/note_controller.dart';
+
+// NEW CHANGE: Extending GetView<NoteController> eliminates Get.find()
+class MediaPreviewList extends GetView<NoteController> {
+  const MediaPreviewList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final totalMedia = controller.currentCloudMedia.length +
+          controller.selectedLocalMediaPaths.length;
+      if (totalMedia == 0) return const SizedBox.shrink();
+
+      return SizedBox(
+        height: 100,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: totalMedia,
+          itemBuilder: (context, index) {
+            final cloudLen = controller.currentCloudMedia.length;
+            final isCloud = index < cloudLen;
+            final path = isCloud
+                ? controller.currentCloudMedia[index].mediaLink
+                : controller.selectedLocalMediaPaths[index - cloudLen];
+
+            //dont bload UI widgets (decImg)
+            //calculate image provider first &
+            //simple provide image (cached if cloud and file if local)
+            final ImageProvider imageProvider = isCloud
+                ? CachedNetworkImageProvider(path) as ImageProvider
+                : FileImage(File(path));
+
+            debugPrint(
+              '<><><><><><> Media Preview LVB:current media(isCloud:$isCloud) path:$path <><><><><><>',
+            );
+
+            return GestureDetector(
+              onTap: () {
+                //no need to build detail image view
+                //easy_image_provider
+                showImageViewer(
+                  context,
+                  imageProvider,
+                  swipeDismissible: true,
+                  doubleTapZoomable: true,
+                );
+              },
+              child: Container(
+                width: 100,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.cancel,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      controller.removeMedia(index: index);
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+} 
 // --- File: E:\IT\Flutter Marathon july aug\FLUTTER PREPS\Atharva Portfolio Apps\note_app\lib\features\note_app\presentation\widgets\note_card.dart ---  
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
