@@ -4,31 +4,23 @@ A Flutter notes application built to practice and implement real-world mobile ap
 
 The project uses **GetX, Firebase Authentication, Cloud Firestore, GetStorage, Supabase Storage, and Clean Architecture**.
 
-## Simply Note App Screenshots
+## 📸 Screenshots
 
-### Login Screen
-![Simply Note Login](app_screenshots/simply_note/login.png.jpg)
+| Authentication & Home | Notes Workspace |
+| --- | --- |
+| <img src="app_screenshots/simply_note/login.png.jpg" width="375" alt="Login Screen"> | <img src="app_screenshots/simply_note/notes_view.png.jpg" width="375" alt="Notes Workspace View"> |
 
-### Notes Workspace
-![Simply Note Workspace](app_screenshots/simply_note/notes_view.png.jpg)
+| Creating/Editing Notes | Image Selection Options |
+| --- | --- |
+| <img src="app_screenshots/simply_note/edit_note.png.jpg" width="375" alt="Edit Note Layout"> | <img src="app_screenshots/simply_note/media_attachment_options.png.jpg" width="375" alt="Media Options Context Menu"> |
 
-### Edit Note Layout
-![Simply Note Edit Note](app_screenshots/simply_note/edit_note.png.jpg)
+| Capturing Imagery | Permission Guardrails |
+| --- | --- |
+| <img src="app_screenshots/simply_note/capture_image.png.jpg" width="375" alt="Camera Capture Mode"> | <img src="app_screenshots/simply_note/camera_permissions.png.jpg" width="375" alt="OS Camera Access Dialog"> |
 
-### Image Attachment Options
-![Simply Note Media Options](app_screenshots/simply_note/media_attachment_options.png.jpg)
-
-### Camera Mode
-![Simply Note Camera Mode](app_screenshots/simply_note/capture_image.png.jpg)
-
-### Camera Permissions Guardrail
-![Simply Note Camera Permissions](app_screenshots/simply_note/camera_permissions.png.jpg)
-
-### OTP Verification Screen
-![Simply Note OTP Verification](app_screenshots/simply_note/otp_screen.png.jpg)
-
-### Unsaved Progress Warning Modal
-![Simply Note Unsaved Warning](app_screenshots/simply_note/unsaved_edit_warning.png.jpg)
+| Interactive Verification | Unsaved Progress Warning |
+| --- | --- |
+| <img src="app_screenshots/simply_note/otp_screen.png.jpg" width="375" alt="OTP Pin Entry Screen"> | <img src="app_screenshots/simply_note/unsaved_edit_warning.png.jpg" width="375" alt="Discard Progress Warning Modal"> |
 
 
 ## 📱 Overview
